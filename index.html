@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ex01</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <script type="module">
+        import * as THREE from './three.module.js';
+        // import { Water } from './Water.js';
+        import { OrbitControls } from "https://cdn.skypack.dev/three@0.136.0/examples/jsm/controls/OrbitControls";
+
+        let camera, scene, renderer, cube, sphere, water;
+
+        window.onload = function init() {
+            scene = new THREE.Scene();
+
+            const aspect = window.innerWidth / window.innerHeight;
+            camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+            camera.position.x = 0;
+            camera.position.y = 1;
+            camera.position.z = 5;
+            camera.lookAt(scene.position);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor("cyan");
+            document.body.appendChild(renderer.domElement);
+
+            let controls = new OrbitControls(camera, renderer.domElement);
+
+            let light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.setScalar(1);
+            scene.add(light, new THREE.AmbientLight(0xffffff, 0.25));
+
+            const geometry = new THREE.PlaneGeometry(100, 50);
+            const material = new THREE.MeshBasicMaterial( {color: "#04405A", side: THREE.DoubleSide} );
+            const plane = new THREE.Mesh( geometry, material );
+            plane.position.z = -7.5;
+            plane.position.y = -25;
+            scene.add( plane );
+
+            let g = new THREE.PlaneGeometry(75, 15, 15, 15);
+            g.rotateX(-Math.PI * 0.5);
+
+            let vertData = [];
+            let v3 = new THREE.Vector3(); // for re-use
+            for (let i = 0; i < g.attributes.position.count; i++) {
+                v3.fromBufferAttribute(g.attributes.position, i);
+                vertData.push({
+                    initH: v3.y,
+                    amplitude: THREE.MathUtils.randFloatSpread(2),
+                    phase: THREE.MathUtils.randFloat(0, Math.PI)
+                });
+            }
+            let m = new THREE.MeshLambertMaterial({
+                color: "#2384eb"
+            });
+            let o = new THREE.Mesh(g, m);
+            scene.add(o);
+
+            let clock = new THREE.Clock();
+
+            let time = clock.getElapsedTime();
+                vertData.forEach((vd, idx) => {
+                    let y = vd.initH + Math.sin(time + vd.phase) * vd.amplitude;
+                    g.attributes.position.setY(idx, y);
+                });
+            g.attributes.position.needsUpdate = true;
+            g.computeVertexNormals();
+
+            // const geometry = new THREE.PlaneGeometry(30, 5);
+            // geometry.rotateX(-Math.PI * 0.5);
+            // const material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+            // const plane = new THREE.Mesh(geometry, material );
+            // scene.add( plane );
+
+            // const light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
+            // scene.add( light );
+
+            // const waterGeometry = new THREE.PlaneGeometry(20, 20);
+
+            // water = new Water( waterGeometry, {
+            //     color: '#ffffff',
+            //     scale: 4,
+            //     flowDirection: new THREE.Vector2(1, 1),
+            //     textureWidth: 1024,
+            //     textureHeight: 1024
+            // } );
+
+            // water.position.y = 1;
+            // water.position.z = 1;
+            // water.rotation.x = Math.PI * - 0.5;
+            // scene.add(water);
+            
+            // let geometry = new THREE.BoxGeometry(2, 2, 2);
+            // let material = new THREE.MeshNormalMaterial();
+            // cube = new THREE.Mesh(geometry, material);
+            // scene.add(cube);
+            // let axesCube = new THREE.AxesHelper(2);
+            // cube.add(axesCube);
+
+            // // SPHERE
+            // let geometrySphere = new THREE.SphereGeometry(1);
+            // sphere = new THREE.Mesh(geometrySphere, material);
+            // sphere.position.set(2, 0, 0)
+            // cube.add(sphere);
+            // let axesSphere = new THREE.AxesHelper(2);
+            // sphere.add(axesSphere);
+            
+            // let axes= new THREE.AxesHelper(3);
+            // scene.add(axes);
+
+            // TRIANGLE
+            // geometry = new THREE.Geometry(); // build a custom geometry, composed of 3 vertices
+            // geometry.vertices.push(new THREE.Vector3(-2, 2, 0), new THREE.Vector3(-2, -2, 0), new THREE.Vector3(2, -2, 0));
+            // geometry.faces.push(new THREE.Face3(0, 1, 2)); // those 3 vertices form 1 face
+            // material = new THREE.MeshBasicMaterial({ color: 0x00FF00, wireframe: false });
+            // let triangle = new THREE.Mesh(geometry, material);
+            // // add the triangle to the scene
+            // scene.add(triangle);
+        
+            renderer.setAnimationLoop(() => {
+                renderer.render(scene, camera);
+            });
+        }
+    </script>
+</body>
+</html>
