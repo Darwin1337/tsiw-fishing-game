@@ -27,6 +27,11 @@ let cabelo, isMovingLeft = true;
 
 let barba,  isBeardMoving = true;
 
+let maxAngleBarbatana=false;
+let maxAngleBarbatana2=false;
+let maxAngleCauda=false;
+let maximoAlcance=false;
+let maximoAlcance2=false;
 
 // Carregador de texturas
 const textureLoader = new THREE.TextureLoader();
@@ -196,34 +201,33 @@ window.onload = function init() {
     // cauda
     const geometry = new THREE.CylinderGeometry(0, 5, 5, 4 );
     const material = new THREE.MeshLambertMaterial( {color: 0xffff00} );
-    const cylinder = new THREE.Mesh( geometry, material );
-    cylinder.position.x = -12; 
-    cylinder.scale.set(2,1.5,.3);
-    cylinder.rotation.z = -(Math.PI/2);
-    peixe.add(cylinder);
+    peixe.cauda = new THREE.Mesh( geometry, material );
+    peixe.cauda.position.x = -12; 
+    peixe.cauda.scale.set(2,1.5,.1);
+    peixe.cauda.rotation.z = -(Math.PI/2);
+    peixe.add(peixe.cauda);
 
     //barbatana lateral 1
-    const barbatana1 = new THREE.Mesh(geometry, material);
-    barbatana1.scale.set(.8,1,.1);
-    barbatana1.position.x = 0; 
-    barbatana1.rotation.x = 0; 
-    barbatana1.position.y = 0; 
-    barbatana1.rotation.y = THREE.MathUtils.degToRad(50); 
-    barbatana1.position.z = 6;
-    barbatana1.rotation.z = -(Math.PI/2);
-    peixe.add(barbatana1);
+    peixe.barbatana1 = new THREE.Mesh(geometry, material);
+    peixe.barbatana1.scale.set(.8,1,.1);
+    peixe.barbatana1.position.x = 0; 
+    peixe.barbatana1.rotation.x = 0; 
+    peixe.barbatana1.position.y = 0; 
+    peixe.barbatana1.rotation.y = THREE.MathUtils.degToRad(50); 
+    peixe.barbatana1.position.z = 6;
+    peixe.barbatana1 .rotation.z = -(Math.PI/2);
+    peixe.add(peixe.barbatana1);
 
     //barbatana lateral 2
-    const barbatana2 = new THREE.Mesh(geometry, material);
-    barbatana2.scale.set(.8,1,.1);
-    barbatana2.position.x = 0; 
-    barbatana2.rotation.x = 0; 
-    barbatana2.position.y = 0; 
-    barbatana2.rotation.y = (Math.PI); 
-    barbatana2.rotation.y = THREE.MathUtils.degToRad(130); 
-    barbatana2.position.z = -6;
-    barbatana2.rotation.z = (Math.PI/2);
-    peixe.add(barbatana2);
+    peixe.barbatana2 = new THREE.Mesh(geometry, material);
+    peixe.barbatana2.scale.set(.8,1,.1);
+    peixe.barbatana2.position.x = 0; 
+    peixe.barbatana2.rotation.x = 0; 
+    peixe.barbatana2.position.y = 0; 
+    peixe.barbatana2.position.z = -6;
+    peixe.barbatana2 .rotation.z = (Math.PI/2);
+    peixe.barbatana2.rotation.y= (THREE.MathUtils.degToRad(140));
+    peixe.add(peixe.barbatana2);
 
 
     //cabeca 
@@ -626,7 +630,7 @@ window.onload = function init() {
 }
 
 function render() {
-    // console.log(camera.position)
+    
     // Animação da onda a cada render executado
     verticesOnda.forEach((vd, idx) => {
         geoAgua.attributes.position.setY(idx, (vd.initH + Math.sin(clock.getElapsedTime() + vd.phase) * vd.amplitude));
@@ -660,6 +664,76 @@ function render() {
             isFloatingUp = true;
         }
     }
+   
+    if(peixe.position.x>window.innerWidth * .05){
+        maximoAlcance=true;
+    }
+    else if(maximoAlcance==false || maximoAlcance2==true){
+        peixe.position.x+=.3
+    }
+    if(maximoAlcance){
+        maximoAlcance2=false;
+        peixe.rotation.y=THREE.MathUtils.degToRad(180)
+        peixe.position.x-=.3
+        if( peixe.position.x<-window.innerWidth * .05){
+            peixe.rotation.y=THREE.MathUtils.degToRad(0)
+            maximoAlcance2=true;
+            maximoAlcance=false;
+        }
+        
+    }
+    
+    //Barbatana 1
+    if((peixe.barbatana1.rotation.y<1) && maxAngleBarbatana==false){
+        peixe.barbatana1.rotation.y+=THREE.MathUtils.degToRad(2)
+        if(peixe.barbatana1.rotation.y>1){
+            maxAngleBarbatana=true;
+        }
+    }
+    if(maxAngleBarbatana){
+        if(peixe.barbatana1.rotation.y>0){
+            peixe.barbatana1.rotation.y-=THREE.MathUtils.degToRad(2)
+        }
+        else{
+            maxAngleBarbatana=false;
+        }
+    }
+    
+   //Barbatana 2
+    if((peixe.barbatana2.rotation.y<3.4) && maxAngleBarbatana2==false){
+        peixe.barbatana2.rotation.y+=THREE.MathUtils.degToRad(2)
+        if(peixe.barbatana2.rotation.y>3.4){
+            maxAngleBarbatana2=true;
+        }
+    }
+    if(maxAngleBarbatana2){
+        if(peixe.barbatana2.rotation.y>2.4){
+            peixe.barbatana2.rotation.y-=THREE.MathUtils.degToRad(2)
+        }
+        else{
+            maxAngleBarbatana2=false;
+        }
+    }
+
+    //Cauda
+    if((peixe.cauda.rotation.y<.5 || peixe.cauda.rotation.y<0) && maxAngleCauda==false){
+        peixe.cauda.rotation.y+=THREE.MathUtils.degToRad(2)
+        if(peixe.cauda.rotation.y>=.5){
+            maxAngleCauda=true;
+        }
+    }
+    if(maxAngleCauda){
+        if(peixe.cauda.rotation.y>0){
+            peixe.cauda.rotation.y-=THREE.MathUtils.degToRad(2)
+        }
+        else{
+            maxAngleCauda=false;
+        }
+    }
+    
+
+
+    
 
     // Aminação do cabelo
     if (isMovingLeft) {
