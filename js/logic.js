@@ -19,6 +19,8 @@ let barco, isFloatingLeft = true, isFloatingUp = true;
 
 let peixe;
 
+let homem;
+
 // Carregador de texturas
 const textureLoader = new THREE.TextureLoader();
 
@@ -247,6 +249,182 @@ window.onload = function init() {
     peixeOlho2.position.y = 2;
     peixeOlho2.position.z = -4;
     peixe.add(peixeOlho2);
+
+    //Tronco Homem
+    homem = new THREE.Group();
+    const geometryCorpoHomem = new THREE.BoxGeometry(3, 8, 7);
+ 	const materialCorpoHomem = new THREE.MeshLambertMaterial({
+        color: "yellow" ,
+        shading: THREE.FlatShading
+    });
+    const homemCorpo = new THREE.Mesh(geometryCorpoHomem, materialCorpoHomem);
+    homem.add(homemCorpo);
+
+    //Braço Esquerda
+    const geometryBracoEHomem = new THREE.BoxGeometry(2, 10, 2);
+ 	const materialBracoEHomem = new THREE.MeshLambertMaterial({
+        color: "blue" ,
+        shading: THREE.FlatShading
+    });
+
+    const homemBracoE = new THREE.Mesh(geometryBracoEHomem, materialBracoEHomem);
+    homemBracoE.position.x = 0;
+    homemBracoE.position.y = -2;
+    homemBracoE.position.z = -4.5;
+    homem.add(homemBracoE);
+
+    //Braço Direita
+    const geometryBracoDHomem = new THREE.BoxGeometry(2, 10, 2);
+ 	const materialBracoDHomem = new THREE.MeshLambertMaterial({
+        color: "blue" ,
+        shading: THREE.FlatShading
+    });
+
+    const homemBracoD = new THREE.Mesh(geometryBracoDHomem, materialBracoDHomem);
+    homemBracoD.position.x = 0;
+    homemBracoD.position.y = -2;
+    homemBracoD.position.z = 4.5;
+    homem.add(homemBracoD);
+
+    //Perna Esquerda 1
+    const geometryPernaEHomem1 = new THREE.BoxGeometry(6, 2.7, 2.7);
+ 	const materialPernaEHomem1 = new THREE.MeshLambertMaterial({
+        color: "red" ,
+        shading: THREE.FlatShading
+    });
+
+    const homemPernaE1 = new THREE.Mesh(geometryPernaEHomem1, materialPernaEHomem1);
+    homemPernaE1.position.x = 4;
+    homemPernaE1.position.y = -5.2;
+    homemPernaE1.position.z = -2;
+    homem.add(homemPernaE1);
+
+    //Perna Direita 1
+    const geometryPernaDHomem1 = new THREE.BoxGeometry(6, 2.7, 2.7);
+ 	const materialPernaDHomem1 = new THREE.MeshLambertMaterial({
+        color: "green" ,
+        shading: THREE.FlatShading
+    });
+
+    const homemPernaD1 = new THREE.Mesh(geometryPernaDHomem1, materialPernaDHomem1);
+    homemPernaD1.position.x = 4;
+    homemPernaD1.position.y = -5.2;
+    homemPernaD1.position.z = 2;
+    homem.add(homemPernaD1);
+
+    //Perna Esquerda 2
+    const geometryPernaEHomem2 = new THREE.BoxGeometry(3, 2.7, 2.7);
+ 	const materialPernaEHomem2 = new THREE.MeshLambertMaterial({
+        color: "red" ,
+        shading: THREE.FlatShading
+    });
+
+    const homemPernaE2 = new THREE.Mesh(geometryPernaEHomem2, materialPernaEHomem2);
+    homemPernaE2.position.x = 5.5;
+    homemPernaE2.position.y = -7.7;
+    homemPernaE2.position.z = -2;
+    homem.add(homemPernaE2);
+
+    //Perna Direita 2
+    const geometryPernaDHomem2 = new THREE.BoxGeometry(3, 2.7, 2.7);
+ 	const materialPernaDHomem2 = new THREE.MeshLambertMaterial({
+        color: "green" ,
+        shading: THREE.FlatShading
+    });
+
+    const homemPernaD2 = new THREE.Mesh(geometryPernaDHomem2, materialPernaDHomem2);
+    homemPernaD2.position.x = 5.5;
+    homemPernaD2.position.y = -7.7;
+    homemPernaD2.position.z = 2;
+    homem.add(homemPernaD2);
+
+    //Cabeça
+    const geometryCabecaHomem = new THREE.BoxGeometry(5, 5, 5);
+ 	const materialCabecaHomem = new THREE.MeshLambertMaterial({
+        color: "orange" ,
+        shading: THREE.FlatShading
+    });
+    const homemCabeca = new THREE.Mesh(geometryCabecaHomem, materialCabecaHomem);
+    homemCabeca.position.y = 6.5;
+    homem.add(homemCabeca);
+
+    //olho direita
+    const geometryOlhoDHomem = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+ 	const materialOlhoDHomem = new THREE.MeshLambertMaterial({
+        color: "black" ,
+        shading: THREE.FlatShading
+    });
+    const homemOlhoD = new THREE.Mesh(geometryOlhoDHomem, materialOlhoDHomem);
+    homemOlhoD.position.x = 2.5;
+    homemOlhoD.position.y = 7.5;
+    homemOlhoD.position.z = 1;
+    homem.add(homemOlhoD);
+
+    //olho esquerda
+    const geometryOlhoEHomem = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+ 	const materialOlhoEHomem = new THREE.MeshLambertMaterial({
+        color: "black" ,
+        shading: THREE.FlatShading
+    });
+    const homemOlhoE = new THREE.Mesh(geometryOlhoEHomem, materialOlhoEHomem);
+    homemOlhoE.position.x = 2.5;
+    homemOlhoE.position.y = 7.5;
+    homemOlhoE.position.z = -1;
+    homem.add(homemOlhoE);
+
+    //nariz
+    const geometryNarizHomem = new THREE.BoxGeometry(0.5, 1, 0.5);
+ 	const materialNarizHomem = new THREE.MeshLambertMaterial({
+        color: "black" ,
+        shading: THREE.FlatShading
+    });
+    const homemNariz = new THREE.Mesh(geometryNarizHomem, materialNarizHomem);
+    homemNariz.position.x = 2.5;
+    homemNariz.position.y = 6.5;
+    homem.add(homemNariz);
+
+    //boca
+    const geometryBocaHomem = new THREE.BoxGeometry(0.5, 0.5, 2);
+ 	const materialBocaHomem = new THREE.MeshLambertMaterial({
+        color: "red" ,
+        shading: THREE.FlatShading
+    });
+    const homemBoca = new THREE.Mesh(geometryBocaHomem, materialBocaHomem);
+    homemBoca.position.x = 2.5;
+    homemBoca.position.y = 5;
+    homem.add(homemBoca);
+
+    //Boca 2
+    const geometryBocaHomem2 = new THREE.BoxGeometry(0.5, 1, 0.5);
+ 	const materialBocaHomem2 = new THREE.MeshLambertMaterial({
+        color: "red" ,
+        shading: THREE.FlatShading
+    });
+    const homemBoca2 = new THREE.Mesh(geometryBocaHomem2, materialBocaHomem2);
+    homemBoca2.position.x = 2.5;
+    homemBoca2.position.y = 5.5;
+    homemBoca2.position.z = -1;
+    homem.add(homemBoca2);
+
+    //boca 3
+    const geometryBocaHomem3 = new THREE.BoxGeometry(0.5, 1, 0.5);
+ 	const materialBocaHomem3 = new THREE.MeshLambertMaterial({
+        color: "red" ,
+        shading: THREE.FlatShading
+    });
+    const homemBoca3 = new THREE.Mesh(geometryBocaHomem3, materialBocaHomem3);
+    homemBoca3.position.x = 2.5;
+    homemBoca3.position.y = 5.5;
+    homemBoca3.position.z = 1;
+    homem.add(homemBoca3);
+
+    
+
+    //Objeto 3D Homem
+    homem.position.y = 12;
+    homem.position.x = 10;
+    scene.add(homem);
+
 
     // Objeto 3D Peixe
     peixe.position.y = -40;
