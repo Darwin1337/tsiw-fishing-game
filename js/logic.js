@@ -17,6 +17,8 @@ let clock;
 // Barco
 let barco, isFloatingLeft = true, isFloatingUp = true;
 
+let peixe;
+
 // Carregador de texturas
 const textureLoader = new THREE.TextureLoader();
 
@@ -168,6 +170,90 @@ window.onload = function init() {
     barcoParteDireita.position.y = 4;
     barco.add(barcoParteDireita);
 
+
+    
+    //Peixe Centro
+
+    peixe= new THREE.Group();
+
+    const geometryCorpo = new THREE.BoxGeometry(20, 10, 10);
+ 	const materialCorpo = new THREE.MeshLambertMaterial({
+        color: 0x80f5fe ,
+        shading: THREE.FlatShading
+    });
+    const peixeCorpo = new THREE.Mesh(geometryCorpo, materialCorpo);
+    peixe.add(peixeCorpo);
+
+    // cauda
+    const geometry = new THREE.CylinderGeometry(0, 5, 5, 4 );
+    const material = new THREE.MeshLambertMaterial( {color: 0xffff00} );
+    const cylinder = new THREE.Mesh( geometry, material );
+    cylinder.position.x = -12; 
+    cylinder.scale.set(2,1.5,.3);
+    cylinder.rotation.z = -(Math.PI/2);
+    peixe.add(cylinder);
+
+    //barbatana lateral 1
+    const barbatana1 = new THREE.Mesh(geometry, material);
+    barbatana1.scale.set(.8,1,.1);
+    barbatana1.position.x = 0; 
+    barbatana1.rotation.x = 0; 
+    barbatana1.position.y = 0; 
+    barbatana1.rotation.y = THREE.MathUtils.degToRad(50); 
+    barbatana1.position.z = 6;
+    barbatana1.rotation.z = -(Math.PI/2);
+    peixe.add(barbatana1);
+
+    //barbatana lateral 2
+    const barbatana2 = new THREE.Mesh(geometry, material);
+    barbatana2.scale.set(.8,1,.1);
+    barbatana2.position.x = 0; 
+    barbatana2.rotation.x = 0; 
+    barbatana2.position.y = 0; 
+    barbatana2.rotation.y = (Math.PI); 
+    barbatana2.rotation.y = THREE.MathUtils.degToRad(130); 
+    barbatana2.position.z = -6;
+    barbatana2.rotation.z = (Math.PI/2);
+    peixe.add(barbatana2);
+
+
+    //cabeca 
+
+    const geometryCabeca = new THREE.ConeGeometry( 7.1, 10, 4 );
+    const materialCabeca = new THREE.MeshLambertMaterial( {color: 0xffff00} );
+    const peixeCabeca = new THREE.Mesh(geometryCabeca, materialCabeca);
+    
+    peixeCabeca.position.x = 15;
+    peixeCabeca.rotation.x = -(Math.PI/4);
+    peixeCabeca.rotation.z = -(Math.PI/2);
+    
+    peixe.add(peixeCabeca);
+
+    //olho 1
+    const geometryOlho = new THREE.BoxGeometry(1.5, 1.5, .1);
+ 	const materialOlho = new THREE.MeshLambertMaterial({
+        color: "#000000" ,
+        shading: THREE.FlatShading
+    });
+    const peixeOlho = new THREE.Mesh(geometryOlho, materialOlho);
+    peixeOlho.position.x = 12;
+    peixeOlho.position.y = 2;
+    peixeOlho.position.z = 4;
+    peixe.add(peixeOlho);
+
+    //olho 2
+    const peixeOlho2 = new THREE.Mesh(geometryOlho, materialOlho);
+    peixeOlho2.position.x = 12;
+    peixeOlho2.position.y = 2;
+    peixeOlho2.position.z = -4;
+    peixe.add(peixeOlho2);
+
+    // Objeto 3D Peixe
+    peixe.position.y = -40;
+    peixe.scale.set(.4,.4,.4);
+    scene.add(peixe);
+
+  
     // Objeto 3D Barco
     barco.position.y = 0;
     scene.add(barco);
