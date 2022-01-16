@@ -21,6 +21,13 @@ let peixe;
 
 let homem;
 
+let bracos;
+
+let cabelo, isMovingLeft = true;
+
+let barba,  isBeardMoving = true;
+
+
 // Carregador de texturas
 const textureLoader = new THREE.TextureLoader();
 
@@ -252,177 +259,349 @@ window.onload = function init() {
 
     //Tronco Homem
     homem = new THREE.Group();
-    const geometryCorpoHomem = new THREE.BoxGeometry(3, 8, 7);
+    const geometryCorpoHomem = new THREE.CylinderGeometry( 3, 4, 8, 5, 4 );
  	const materialCorpoHomem = new THREE.MeshLambertMaterial({
         color: "yellow" ,
-        shading: THREE.FlatShading
     });
+    
     const homemCorpo = new THREE.Mesh(geometryCorpoHomem, materialCorpoHomem);
+    homemCorpo.rotation.y = -(Math.PI)/2
     homem.add(homemCorpo);
 
+
     //Braço Esquerda
-    const geometryBracoEHomem = new THREE.BoxGeometry(2, 10, 2);
+    bracos = new THREE.Group();
+    const geometryBracoEHomem = new THREE.CylinderGeometry(1, 0.7 , 10);
+    geometryBracoEHomem.rotateX(-0.2)
+    geometryBracoEHomem.rotateZ(1)
  	const materialBracoEHomem = new THREE.MeshLambertMaterial({
-        color: "blue" ,
+        color: "yellow" ,
         shading: THREE.FlatShading
     });
 
     const homemBracoE = new THREE.Mesh(geometryBracoEHomem, materialBracoEHomem);
-    homemBracoE.position.x = 0;
-    homemBracoE.position.y = -2;
-    homemBracoE.position.z = -4.5;
-    homem.add(homemBracoE);
+    homemBracoE.position.x = 3;
+    homemBracoE.position.y = 0;
+    homemBracoE.position.z = -3;
+    bracos.add(homemBracoE);
+
+    //Mão Esquerda
+    const geometryMaoEHomem = new THREE.SphereGeometry(0.7);
+ 	const materialMaoEHomem = new THREE.MeshLambertMaterial({
+        color: "pink" ,
+        shading: THREE.FlatShading
+    });
+
+    const homemMaoE = new THREE.Mesh(geometryMaoEHomem, materialMaoEHomem);
+    homemMaoE.position.x = 7;
+    homemMaoE.position.y = -2.6;
+    homemMaoE.position.z = -2;
+    bracos.add(homemMaoE);
 
     //Braço Direita
-    const geometryBracoDHomem = new THREE.BoxGeometry(2, 10, 2);
+    const geometryBracoDHomem = new THREE.CylinderGeometry(1, 0.7 , 10);
+    geometryBracoDHomem.rotateX(0.2)
+    geometryBracoDHomem.rotateZ(1)
  	const materialBracoDHomem = new THREE.MeshLambertMaterial({
-        color: "blue" ,
+        color: "yellow" ,
         shading: THREE.FlatShading
     });
 
     const homemBracoD = new THREE.Mesh(geometryBracoDHomem, materialBracoDHomem);
-    homemBracoD.position.x = 0;
-    homemBracoD.position.y = -2;
-    homemBracoD.position.z = 4.5;
-    homem.add(homemBracoD);
+    homemBracoD.position.x = 3;
+    homemBracoD.position.y = 0;
+    homemBracoD.position.z = 3;
+    bracos.add(homemBracoD);
+
+    //Mão Direita
+    const geometryMaoDHomem = geometryMaoEHomem.clone();
+ 	const materialMaoDHomem = new THREE.MeshLambertMaterial({
+        color: "pink" ,
+        shading: THREE.FlatShading
+    });
+
+    const homemMaoD = new THREE.Mesh(geometryMaoDHomem, materialMaoDHomem);
+    homemMaoD.position.x = 7;
+    homemMaoD.position.y = -2.6;
+    homemMaoD.position.z = 2;
+    bracos.add(homemMaoD);
 
     //Perna Esquerda 1
-    const geometryPernaEHomem1 = new THREE.BoxGeometry(6, 2.7, 2.7);
+    const geometryPernaEHomem1 = new THREE.BoxGeometry(9, 2.4, 2.4);
  	const materialPernaEHomem1 = new THREE.MeshLambertMaterial({
-        color: "red" ,
+        color: "black" ,
         shading: THREE.FlatShading
     });
 
     const homemPernaE1 = new THREE.Mesh(geometryPernaEHomem1, materialPernaEHomem1);
-    homemPernaE1.position.x = 4;
+    homemPernaE1.position.x = 1.5;
     homemPernaE1.position.y = -5.2;
     homemPernaE1.position.z = -2;
     homem.add(homemPernaE1);
 
     //Perna Direita 1
-    const geometryPernaDHomem1 = new THREE.BoxGeometry(6, 2.7, 2.7);
+    const geometryPernaDHomem1 = geometryPernaEHomem1.clone();
  	const materialPernaDHomem1 = new THREE.MeshLambertMaterial({
-        color: "green" ,
+        color: "black" ,
         shading: THREE.FlatShading
     });
 
     const homemPernaD1 = new THREE.Mesh(geometryPernaDHomem1, materialPernaDHomem1);
-    homemPernaD1.position.x = 4;
+    homemPernaD1.position.x = 1.5;
     homemPernaD1.position.y = -5.2;
     homemPernaD1.position.z = 2;
     homem.add(homemPernaD1);
 
     //Perna Esquerda 2
-    const geometryPernaEHomem2 = new THREE.BoxGeometry(3, 2.7, 2.7);
+    const geometryPernaEHomem2 = new THREE.BoxGeometry(3, 2.4, 2.4);
  	const materialPernaEHomem2 = new THREE.MeshLambertMaterial({
-        color: "red" ,
+        color: "black" ,
         shading: THREE.FlatShading
     });
 
     const homemPernaE2 = new THREE.Mesh(geometryPernaEHomem2, materialPernaEHomem2);
-    homemPernaE2.position.x = 5.5;
+    homemPernaE2.position.x = 4.5;
     homemPernaE2.position.y = -7.7;
     homemPernaE2.position.z = -2;
     homem.add(homemPernaE2);
 
     //Perna Direita 2
-    const geometryPernaDHomem2 = new THREE.BoxGeometry(3, 2.7, 2.7);
+    const geometryPernaDHomem2 = geometryPernaEHomem2.clone();
  	const materialPernaDHomem2 = new THREE.MeshLambertMaterial({
-        color: "green" ,
+        color: "black" ,
         shading: THREE.FlatShading
     });
 
     const homemPernaD2 = new THREE.Mesh(geometryPernaDHomem2, materialPernaDHomem2);
-    homemPernaD2.position.x = 5.5;
+    homemPernaD2.position.x = 4.5;
     homemPernaD2.position.y = -7.7;
     homemPernaD2.position.z = 2;
     homem.add(homemPernaD2);
 
-    //Cabeça
-    const geometryCabecaHomem = new THREE.BoxGeometry(5, 5, 5);
+    //Cabeça Homem
+    const geometryCabecaHomem = new THREE.SphereGeometry(3, 5, 4);
  	const materialCabecaHomem = new THREE.MeshLambertMaterial({
-        color: "orange" ,
-        shading: THREE.FlatShading
+        color: "pink" ,
     });
     const homemCabeca = new THREE.Mesh(geometryCabecaHomem, materialCabecaHomem);
     homemCabeca.position.y = 6.5;
     homem.add(homemCabeca);
 
+    //Cabelo1
+    cabelo = new THREE.Group();
+    const geometryCabeloHomem1 = new THREE.ConeGeometry(0.5, 1.5, 4);
+ 	const materialCabeloHomem1 = new THREE.MeshLambertMaterial({
+        color: "brown" ,
+    });
+    const homemCabelo1 = new THREE.Mesh(geometryCabeloHomem1, materialCabeloHomem1);
+    homemCabelo1.position.x = 1.5;
+    homemCabelo1.position.y = 9;
+    // homemCabelo1.rotation.y = -0.30 
+    cabelo.add(homemCabelo1);
+
+    //Cabelo2
+    const geometryCabeloHomem2 = geometryCabeloHomem1.clone();
+ 	const materialCabeloHomem2 = new THREE.MeshLambertMaterial({
+        color: "brown" ,
+    });
+    const homemCabelo2 = new THREE.Mesh(geometryCabeloHomem2, materialCabeloHomem2);
+    homemCabelo2.position.x = 1;
+    homemCabelo2.position.y = 9.5;
+    // homemCabelo1.rotation.y = -0.30 
+    cabelo.add(homemCabelo2);
+
+    //Cabelo3
+    const geometryCabeloHomem3 = geometryCabeloHomem1.clone();
+ 	const materialCabeloHomem3 = new THREE.MeshLambertMaterial({
+        color: "brown" ,
+    });
+    const homemCabelo3 = new THREE.Mesh(geometryCabeloHomem3, materialCabeloHomem3);
+    homemCabelo3.position.x = 0.5;
+    homemCabelo3.position.y = 9.7;
+    // homemCabelo1.rotation.y = -0.30 
+    cabelo.add(homemCabelo3);
+
+    //Cabelo4
+    const geometryCabeloHomem4 = geometryCabeloHomem1.clone();
+ 	const materialCabeloHomem4 = new THREE.MeshLambertMaterial({
+        color: "brown" ,
+    });
+    const homemCabelo4 = new THREE.Mesh(geometryCabeloHomem4, materialCabeloHomem4);
+    homemCabelo4.position.x = 0;
+    homemCabelo4.position.y = 9.9;
+    // homemCabelo1.rotation.y = -0.30 
+    cabelo.add(homemCabelo4);
+
+    //Cabelo5
+    const geometryCabeloHomem5 = geometryCabeloHomem1.clone();
+ 	const materialCabeloHomem5 = new THREE.MeshLambertMaterial({
+        color: "brown" ,
+    });
+    const homemCabelo5 = new THREE.Mesh(geometryCabeloHomem5, materialCabeloHomem5);
+    homemCabelo5.position.x = -0.5;
+    homemCabelo5.position.y = 9.7;
+    // homemCabelo1.rotation.y = -0.30 
+    cabelo.add(homemCabelo5);
+
+    //Cabelo6
+    const geometryCabeloHomem6 = geometryCabeloHomem1.clone();
+ 	const materialCabeloHomem6 = new THREE.MeshLambertMaterial({
+        color: "brown" ,
+    });
+    const homemCabelo6 = new THREE.Mesh(geometryCabeloHomem6, materialCabeloHomem6);
+    homemCabelo6.position.x = -1;
+    homemCabelo6.position.y = 9.5;
+    // homemCabelo1.rotation.y = -0.30 
+    cabelo.add(homemCabelo6);
+
+    //Cabelo7
+    const geometryCabeloHomem7 = geometryCabeloHomem1.clone();
+ 	const materialCabeloHomem7 = new THREE.MeshLambertMaterial({
+        color: "brown" ,
+    });
+    const homemCabelo7 = new THREE.Mesh(geometryCabeloHomem7, materialCabeloHomem7);
+    homemCabelo7.position.x = -1.5;
+    homemCabelo7.position.y = 9;
+    // homemCabelo1.rotation.y = -0.30 
+    cabelo.add(homemCabelo7);
+
+
     //olho direita
-    const geometryOlhoDHomem = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const geometryOlhoDHomem = new THREE.SphereGeometry(0.1);
  	const materialOlhoDHomem = new THREE.MeshLambertMaterial({
-        color: "black" ,
+        color: "green" ,
         shading: THREE.FlatShading
     });
     const homemOlhoD = new THREE.Mesh(geometryOlhoDHomem, materialOlhoDHomem);
-    homemOlhoD.position.x = 2.5;
+    homemOlhoD.position.x = 2.2;
     homemOlhoD.position.y = 7.5;
     homemOlhoD.position.z = 1;
     homem.add(homemOlhoD);
 
+    //olho direitaBranco
+    const geometryOlhoDBHomem = new THREE.SphereGeometry(0.3);
+ 	const materialOlhoDBHomem = new THREE.MeshLambertMaterial({
+        color: "White" ,
+        shading: THREE.FlatShading
+    });
+    const homemOlhoDB = new THREE.Mesh(geometryOlhoDBHomem, materialOlhoDBHomem);
+    homemOlhoDB.position.x = 1.92;
+    homemOlhoDB.position.y = 7.5;
+    homemOlhoDB.position.z = 1;
+    homem.add(homemOlhoDB);
+
     //olho esquerda
-    const geometryOlhoEHomem = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const geometryOlhoEHomem = geometryOlhoDHomem.clone()
  	const materialOlhoEHomem = new THREE.MeshLambertMaterial({
-        color: "black" ,
+        color: "green" ,
         shading: THREE.FlatShading
     });
     const homemOlhoE = new THREE.Mesh(geometryOlhoEHomem, materialOlhoEHomem);
-    homemOlhoE.position.x = 2.5;
+    homemOlhoE.position.x = 2.2;
     homemOlhoE.position.y = 7.5;
     homemOlhoE.position.z = -1;
     homem.add(homemOlhoE);
 
+    //olho EsquerdaBranco
+    const geometryOlhoEBHomem = geometryOlhoDBHomem.clone();
+ 	const materialOlhoEBHomem = new THREE.MeshLambertMaterial({
+        color: "White" ,
+    });
+    const homemOlhoEB = new THREE.Mesh(geometryOlhoEBHomem, materialOlhoEBHomem);
+    homemOlhoEB.position.x = 1.92;
+    homemOlhoEB.position.y = 7.5;
+    homemOlhoEB.position.z = -1;
+    homem.add(homemOlhoEB);
+
     //nariz
-    const geometryNarizHomem = new THREE.BoxGeometry(0.5, 1, 0.5);
+    const geometryNarizHomem = new THREE.ConeGeometry(0.3, 1);
  	const materialNarizHomem = new THREE.MeshLambertMaterial({
         color: "black" ,
         shading: THREE.FlatShading
     });
     const homemNariz = new THREE.Mesh(geometryNarizHomem, materialNarizHomem);
-    homemNariz.position.x = 2.5;
-    homemNariz.position.y = 6.5;
+    homemNariz.position.x = 2.3;
+    homemNariz.position.y = 6.7;
     homem.add(homemNariz);
 
     //boca
+    barba = new THREE.Group();
     const geometryBocaHomem = new THREE.BoxGeometry(0.5, 0.5, 2);
  	const materialBocaHomem = new THREE.MeshLambertMaterial({
-        color: "red" ,
+        color: "brown" ,
         shading: THREE.FlatShading
     });
     const homemBoca = new THREE.Mesh(geometryBocaHomem, materialBocaHomem);
-    homemBoca.position.x = 2.5;
+    homemBoca.position.x = 1.92;
     homemBoca.position.y = 5;
-    homem.add(homemBoca);
+    barba.add(homemBoca);
+
+    //bocabaixo
+    const geometryBocaDupHomem = new THREE.BoxGeometry(0.5, 0.5, 2);
+ 	const materialBocaDupHomem = new THREE.MeshLambertMaterial({
+        color: "brown" ,
+        shading: THREE.FlatShading
+    });
+    const homemBocaDup = new THREE.Mesh(geometryBocaDupHomem, materialBocaDupHomem);
+    homemBocaDup.position.x = 1.92;
+    homemBocaDup.position.y = 4.5;
+    barba.add(homemBocaDup);
+
+    //bocabaixo2
+    const geometryBocaDupHomem2 = new THREE.BoxGeometry(0.5, 0.5, 1);
+ 	const materialBocaDupHomem2 = new THREE.MeshLambertMaterial({
+        color: "brown" ,
+        shading: THREE.FlatShading
+    });
+    const homemBocaDup2 = new THREE.Mesh(geometryBocaDupHomem2, materialBocaDupHomem2);
+    homemBocaDup2.position.x = 2.2;
+    homemBocaDup2.position.y = 4;
+    barba.add(homemBocaDup2);
 
     //Boca 2
     const geometryBocaHomem2 = new THREE.BoxGeometry(0.5, 1, 0.5);
  	const materialBocaHomem2 = new THREE.MeshLambertMaterial({
-        color: "red" ,
+        color: "brown" ,
         shading: THREE.FlatShading
     });
     const homemBoca2 = new THREE.Mesh(geometryBocaHomem2, materialBocaHomem2);
-    homemBoca2.position.x = 2.5;
-    homemBoca2.position.y = 5.5;
+    homemBoca2.position.x = 1.92;
+    homemBoca2.position.y = 5.3;
     homemBoca2.position.z = -1;
-    homem.add(homemBoca2);
+    barba.add(homemBoca2);
 
     //boca 3
     const geometryBocaHomem3 = new THREE.BoxGeometry(0.5, 1, 0.5);
  	const materialBocaHomem3 = new THREE.MeshLambertMaterial({
-        color: "red" ,
+        color: "brown" ,
         shading: THREE.FlatShading
     });
     const homemBoca3 = new THREE.Mesh(geometryBocaHomem3, materialBocaHomem3);
-    homemBoca3.position.x = 2.5;
-    homemBoca3.position.y = 5.5;
+    homemBoca3.position.x = 1.92;
+    homemBoca3.position.y = 5.3;
     homemBoca3.position.z = 1;
-    homem.add(homemBoca3);
+    barba.add(homemBoca3);
+
+    //lingua
+    const geometryLinguaHomem = new THREE.BoxGeometry(0.3, 0.1, 1.5);
+ 	const materialLinguaHomem3 = new THREE.MeshLambertMaterial({
+        color: "white" ,
+        shading: THREE.FlatShading
+    });
+    const homemLingua = new THREE.Mesh(geometryLinguaHomem, materialLinguaHomem3);
+    homemLingua.position.x = 2.1;
+    homemLingua.position.y = 5.3;
+    homem.add(homemLingua);
 
     
 
     //Objeto 3D Homem
     homem.position.y = 12;
     homem.position.x = 10;
+    homem.rotation.y = 0
+    homem.add(barba)
+    homem.add(cabelo);
+    homem.add(bracos);
     scene.add(homem);
 
 
@@ -481,6 +660,37 @@ function render() {
             isFloatingUp = true;
         }
     }
+
+    // Aminação do cabelo
+    if (isMovingLeft) {
+        // O cabelo esta-se mecher para a esquerda
+        // Verifica se já atingiu o ponto máximo de oscilação
+        cabelo.rotation.z -= 0.0005;
+        if (cabelo.rotation.z <= -0.03) {
+            isMovingLeft = false;
+        }
+    } else {
+        cabelo.rotation.z += 0.0005;
+        if (cabelo.rotation.z >= 0.03) {
+            isMovingLeft = true;
+        }
+    }
+
+    // Aminação da barba
+    if (isBeardMoving) {
+        // O cabelo esta-se mecher para a esquerda
+        // Verifica se já atingiu o ponto máximo de oscilação
+        barba.rotation.x -= 0.0002;
+        if (barba.rotation.x <= -0.03) {
+            isBeardMoving = false;
+        }
+    } else {
+        barba.rotation.x += 0.0002;
+        if (barba.rotation.x >= 0.03) {
+            isBeardMoving = true;
+        }
+    }
+    
 
     renderer.render(scene, camera);
 }
