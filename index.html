@@ -11,14 +11,24 @@
     <title>Fishing Game | CG</title>
     <link rel="icon" href="./images/favicon.png">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@900&family=VT323&display=swap');
+
         body {
             margin: 0;
             overflow: hidden;
+        }
+        p {
+            font-family: 'Roboto', sans-serif;
+            position: absolute;
+            left: 10px;
+            font-size: 1.5rem;
+            color: white;
         }
     </style>
 </head>
 
 <body>
+    <p>Peixes apanhados: <span id="quantity">0</span></p>
     <script type="module" src="./js/logic.js"></script>
 </body>
 

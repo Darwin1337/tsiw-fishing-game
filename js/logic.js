@@ -1,7 +1,7 @@
 import * as THREE from './three.module.js';
-import { OrbitControls } from "https://cdn.skypack.dev/pin/three@v0.136.0-4Px7Kx1INqCFBN0tXUQc/mode=imports,min/unoptimized/examples/jsm/controls/OrbitControls.js";
-import { Sky } from "https://cdn.skypack.dev/pin/three@v0.136.0-4Px7Kx1INqCFBN0tXUQc/mode=imports,min/unoptimized/examples/jsm/objects/Sky.js";
-
+// import { OrbitControls } from "https://cdn.skypack.dev/pin/three@v0.136.0-4Px7Kx1INqCFBN0tXUQc/mode=imports,min/unoptimized/examples/jsm/controls/OrbitControls.js";
+import { Sky } from "./Sky.js";
+import * as BufferGeometryUtils from "./BufferGeometryUtils.js"
 // Geral
 let camera, scene, renderer, controls;
 
@@ -15,23 +15,19 @@ let geoAgua, verticesOnda = [];
 let clock;
 
 // Barco
-let barco, isFloatingLeft = true, isFloatingUp = true;
+let barco, isFloatingLeft = true, isFloatingUp = true, motor, pas;
 
-let peixe;
+// Peixe
+let peixe, maxAngleBarbatana = false, maxAngleBarbatana2 = false, maxAngleCauda = false, maximoAlcance = false, maximoAlcance2 = false, peixeMordeu = false, shouldBeAnimated = true;
 
-let homem;
+// Homem
+let homem, bracos, cabelo, barba, isMovingLeft = true, isBeardMoving = true, isPullingRod = true;
 
-let bracos;
+// Cana de pesca
+let cana, initVal = 50;
 
-let cabelo, isMovingLeft = true;
-
-let barba,  isBeardMoving = true;
-
-let maxAngleBarbatana=false;
-let maxAngleBarbatana2=false;
-let maxAngleCauda=false;
-let maximoAlcance=false;
-let maximoAlcance2=false;
+// Array que irá ficar com as teclas pressionadas
+let keys = new Array();
 
 // Carregador de texturas
 const textureLoader = new THREE.TextureLoader();
@@ -42,7 +38,7 @@ window.onload = function init() {
     const aspect = window.innerWidth / window.innerHeight;
     camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
     camera.position.x = 0;
-    camera.position.y = 13;
+    camera.position.y = 16;
     camera.position.z = 81.5;
     camera.lookAt(scene.position);
 
@@ -56,7 +52,7 @@ window.onload = function init() {
     scene = new THREE.Scene();
 
     // Controlos
-    controls = new OrbitControls(camera, renderer.domElement);
+    // controls = new OrbitControls(camera, renderer.domElement);
 
     // Luzes
     // Luz hemisfério
@@ -65,25 +61,31 @@ window.onload = function init() {
     scene.add(light1);
 
     // Luz spotlight
-    let light2 = new THREE.SpotLight(0xffffff);
+    const light2 = new THREE.SpotLight(0xffffff);
     light2.angle = Math.PI;
     light2.position.z = 35;
-    light2.position.y = -15;
+    light2.position.y = -20;
     light2.intensity = .5;
     light2.penumbra = 1;
     scene.add(light2);
 
+    const light3 = new THREE.DirectionalLight(0xffffff, 0.5 );
+    light3.position.z = -100;
+    light3.position.y = 100;
+    light3.castShadow = true; // default false
+    scene.add(light3);
+
     // Fundo do oceano
-    const geoFundoOceano = new THREE.PlaneGeometry(500, 100);
+    const geoFundoOceano = new THREE.PlaneGeometry(500, 150);
     const matFundoOceano = new THREE.MeshPhongMaterial({
         transparent: true,
         opacity: 1,
-        color: "#4771A8",
+        color: 0x4771A8,
         side: THREE.DoubleSide
     });
     const meshFundoOceano = new THREE.Mesh(geoFundoOceano, matFundoOceano);
     meshFundoOceano.position.z = -25;
-    meshFundoOceano.position.y = -51;
+    meshFundoOceano.position.y = -76;
     scene.add(meshFundoOceano);
 
     // Água (cortesia de prisoner849: https://jsfiddle.net/prisoner849/79z8jyLk/)
@@ -101,161 +103,234 @@ window.onload = function init() {
         });
     }
 
-    const matAgua = new THREE.MeshLambertMaterial({color: "#2384eb"});
+    const matAgua = new THREE.MeshLambertMaterial({color: 0x26578c});
     const meshAgua = new THREE.Mesh(geoAgua, matAgua);
     meshAgua.position.z = -25;
     scene.add(meshAgua);
 
     // Céu e sol (https://threejs.org/examples/webgl_shaders_sky.html)
     ceu = new Sky();
-    ceu.scale.setScalar( 450000 );
+    ceu.scale.setScalar(15000);
     scene.add(ceu);
 
     sol = new THREE.Vector3();
 
-    ceu.material.uniforms['turbidity'].value = 0;
-    ceu.material.uniforms['rayleigh'].value = 0.5;
+    ceu.material.uniforms['turbidity'].value =.0;
+    ceu.material.uniforms['rayleigh'].value = .5;
     ceu.material.uniforms['mieCoefficient'].value = 0.005;
-    ceu.material.uniforms['mieDirectionalG'].value = 0.7;
-    sol.setFromSphericalCoords(1, THREE.MathUtils.degToRad(85), THREE.MathUtils.degToRad(180));
+    ceu.material.uniforms['mieDirectionalG'].value = .7;
+    sol.setFromSphericalCoords(1, THREE.MathUtils.degToRad(84), THREE.MathUtils.degToRad(180));
     ceu.material.uniforms['sunPosition'].value.copy(sol);
 
     // Barco
-    barco = new THREE.Group();
+    // Irá ser utilizado o BufferGeometryUtils porque todas as geometrias do barco irão ter o mesmo material
+    let barcoGeometries = [];
 
-    const barcoBaseColor = textureLoader.load('./images/textures/wood/Wood_Floor_007_COLOR.jpg');
+    // Texturas do barco
+    const barcoBaseColor = textureLoader.load('./images/textures/wood/Wood_Barrel_Top_001_basecolor.jpg');
     barcoBaseColor.wrapS = THREE.MirroredRepeatWrapping;
     barcoBaseColor.wrapT = THREE.MirroredRepeatWrapping;
-    barcoBaseColor.repeat.set(15, 1)
-    const barcoDisplacement = textureLoader.load('./images/textures/wood/Wood_Floor_007_DISP.png');
-    const barcoNormal = textureLoader.load('./images/textures/wood/Wood_Floor_007_NORM.jpg');
-    const barcoOcclusion = textureLoader.load('./images/textures/wood/Wood_Floor_007_OCC.jpg');
-    const barcoRoughness = textureLoader.load('./images/textures/wood/Wood_Floor_007_ROUGH.jpg');
-
-    // Parte de baixo do barco
-    const barcoParteBaixo = new THREE.Mesh(
-        new THREE.BoxGeometry(50, 2, 15),
-        new THREE.MeshPhongMaterial({
-            color: "brown",
-            map: barcoBaseColor,
-            displacementMap: barcoDisplacement,
-            displacementScale: 0,
-            normalMap: barcoNormal,
-            aoMap: barcoOcclusion,
-            roughnessMap: barcoRoughness,
-            roughness: 1
-        })
-    );
-    barco.add(barcoParteBaixo);
+    // const barcoDisplacement = textureLoader.load('./images/textures/wood/Wood_Floor_007_DISP.png');
+    const barcoNormal = textureLoader.load('./images/textures/wood/Wood_Barrel_Top_001_normal.jpg');
+    barcoNormal.wrapS = THREE.MirroredRepeatWrapping;
+    barcoNormal.wrapT = THREE.MirroredRepeatWrapping;
+    const barcoOcclusion = textureLoader.load('./images/textures/wood/Wood_Barrel_Top_001_ambientOcclusion.jpg');
+    barcoOcclusion.wrapS = THREE.MirroredRepeatWrapping;
+    barcoOcclusion.wrapT = THREE.MirroredRepeatWrapping;
+    const barcoHeight = textureLoader.load('./images/textures/wood/Wood_Barrel_Top_001_height.png');
+    barcoHeight.wrapS = THREE.MirroredRepeatWrapping;
+    barcoHeight.wrapT = THREE.MirroredRepeatWrapping;
+    const barcoAlpha = textureLoader.load('./images/textures/wood/Wood_Barrel_Top_001_opacity.jpg');
+    barcoAlpha.wrapS = THREE.MirroredRepeatWrapping;
+    barcoAlpha.wrapT = THREE.MirroredRepeatWrapping;
 
     // Lado esquerdo do barco
-    const barcoParteEsquerda = new THREE.Mesh(
-        new THREE.BoxGeometry(50, 10, 2),
-        new THREE.MeshPhongMaterial({
-            color: "brown",
-            map: barcoBaseColor,
-            displacementMap: barcoDisplacement,
-            displacementScale: 0,
-            normalMap: barcoNormal,
-            aoMap: barcoOcclusion,
-            roughnessMap: barcoRoughness,
-            roughness: 1
-        })
-    );
-    barcoParteEsquerda.position.z = 7.5;
-    barcoParteEsquerda.position.y = 4;
-    barco.add(barcoParteEsquerda);
+    const ladoE1 = new THREE.BoxGeometry(30, 10, 2);
+    ladoE1.translate(0, 4, 7.5);
+    barcoGeometries.push(ladoE1);
+
+    const ladoE2 = new THREE.BoxGeometry(5, 10, 2);
+    ladoE2.translate(-14.8, 4, 10.92);
+    ladoE2.rotateY(-0.25);
+    barcoGeometries.push(ladoE2);
+
+    const ladoE3 =new THREE.BoxGeometry(5, 10, 2);
+    ladoE3.translate(-16.2, 4, 14.82);
+    ladoE3.rotateY((Math.PI * 2) - 0.50);
+    barcoGeometries.push(ladoE3);
+
+    const ladoE4 = new THREE.BoxGeometry(10, 10, 2);
+    ladoE4.translate(-23.7, 4, 14.82);
+    ladoE4.rotateY((Math.PI * 2) - 0.50);
+    barcoGeometries.push(ladoE4);
 
     // Lado direito do barco
-    const barcoParteDireita = new THREE.Mesh(
-        new THREE.BoxGeometry(50, 10, 2),
-        new THREE.MeshPhongMaterial({
-            color: "brown",
-            map: barcoBaseColor,
-            displacementMap: barcoDisplacement,
-            displacementScale: 0,
-            normalMap: barcoNormal,
-            aoMap: barcoOcclusion,
-            roughnessMap: barcoRoughness,
-            roughness: 1
-        })
-    );
-    barcoParteDireita.position.z = -7.5;
-    barcoParteDireita.position.y = 4;
-    barco.add(barcoParteDireita);
+    const ladoD1 = new THREE.BoxGeometry(30, 10, 2);
+    ladoD1.translate(0, 4, -10.72);
+    barcoGeometries.push(ladoD1);;
 
+    const ladoD2 = new THREE.BoxGeometry(5, 10, 2);
+    ladoD2.translate(-14.1, 4, -14.07);
+    ladoD2.rotateY(0.25);
+    barcoGeometries.push(ladoD2);
 
-    
-    //Peixe Centro
+    const ladoD3 = new THREE.BoxGeometry(5, 10, 2);
+    ladoD3.translate(-14.7, 4, -17.7);
+    ladoD3.rotateY((Math.PI * 2) + 0.50);
+    barcoGeometries.push(ladoD3);
 
-    peixe= new THREE.Group();
+    const ladoD4 = new THREE.BoxGeometry(10, 10, 2);
+    ladoD4.translate(-22.2, 4, -17.7);
+    ladoD4.rotateY((Math.PI * 2) + 0.50);
+    barcoGeometries.push(ladoD4);
 
-    const geometryCorpo = new THREE.BoxGeometry(20, 10, 10);
- 	const materialCorpo = new THREE.MeshLambertMaterial({
-        color: 0x80f5fe ,
-        shading: THREE.FlatShading
+    // Parte de trás do barco
+    const tras1 = new THREE.BoxGeometry(20.22, 10, 2);
+    tras1.translate(1.6, 4, 16);
+    tras1.rotateY(Math.PI / 2);
+    barcoGeometries.push(tras1);
+
+    // Estaca
+    const estaca = new THREE.BoxGeometry(5, 2, 18.22);
+    estaca.translate(4, 6, -1.5);
+    barcoGeometries.push(estaca);
+
+    //Motor do barco
+    const geometryMotorBarco = new THREE.CylinderGeometry(1, 1 , 2);
+    const materialMotorBarco = new THREE.MeshLambertMaterial({
+            color: "grey"
+        });
+
+    motor = new THREE.Mesh(geometryMotorBarco, materialMotorBarco);
+
+    // MotorBarco.position.y = 2;
+    // MotorBarco.position.z = -1;
+    // MotorBarco.rotation.z = Math.PI/2
+
+    //Pás do Motor Barco 1
+    pas = new THREE.Group();
+    const geometryMotorPA1 = new THREE.BoxGeometry(1, 5, 0.5);
+    const materialMotorPA1 = new THREE.MeshLambertMaterial({
+        color: "grey"
     });
-    const peixeCorpo = new THREE.Mesh(geometryCorpo, materialCorpo);
+
+    const MotorPA1 = new THREE.Mesh(geometryMotorPA1, materialMotorPA1);
+    MotorPA1.rotation.z = Math.PI;
+    MotorPA1.rotation.x = Math.PI / 2;
+    MotorPA1.position.set(0, -1, -2);
+    motor.add(MotorPA1);
+
+    //Pás do Motor Barco 2
+    const geometryMotorPA2 = geometryMotorPA1.clone();
+        const materialMotorPA2 = new THREE.MeshLambertMaterial({
+        color: "grey"
+    });
+
+    const MotorPA2 = new THREE.Mesh(geometryMotorPA2, materialMotorPA2);
+    MotorPA2.rotation.z = Math.PI;
+    MotorPA2.rotation.x = Math.PI / 2;
+    MotorPA2.position.set(0, -1, 2);
+    motor.add(MotorPA2);
+
+    //Pás do Motor Barco 3
+    const geometryMotorPA3 = geometryMotorPA1.clone();
+        const materialMotorPA3 = new THREE.MeshLambertMaterial({
+        color: "grey"
+    });
+
+    const MotorPA3 = new THREE.Mesh(geometryMotorPA3, materialMotorPA3);
+    MotorPA3.rotation.z = Math.PI / 2;
+    MotorPA3.rotation.x = Math.PI / 2;
+    MotorPA3.position.set(2, -1, 0);
+    motor.add(MotorPA3);
+
+    //Pás do Motor Barco 4
+    const geometryMotorPA4 = geometryMotorPA1.clone();
+    const materialMotorPA4 = new THREE.MeshLambertMaterial({
+        color: "grey"
+    });
+
+    const MotorPA4 = new THREE.Mesh(geometryMotorPA4, materialMotorPA4);
+    MotorPA4.rotation.z = Math.PI / 2;
+    MotorPA4.rotation.x = Math.PI / 2;
+    MotorPA4.position.set(-2, -1, 0);
+    motor.add(MotorPA4);
+
+
+    const barcoJunto = BufferGeometryUtils.mergeBufferGeometries(barcoGeometries);
+    barco = new THREE.Mesh(barcoJunto, new THREE.MeshPhongMaterial({
+        color: 0xD99969,
+        map: barcoBaseColor,
+        normalMap: barcoNormal,
+        aoMap: barcoOcclusion,
+        alphaMap: barcoAlpha,
+        bumpMap: barcoHeight
+    }));
+
+    // Objeto peixe
+    peixe = new THREE.Group();
+
+    // Peixe centro
+    const peixeCorpo = new THREE.Mesh(
+        new THREE.BoxGeometry(20, 10, 10),
+        new THREE.MeshLambertMaterial({ color: 0x80f5fe })
+    );
     peixe.add(peixeCorpo);
 
-    // cauda
-    const geometry = new THREE.CylinderGeometry(0, 5, 5, 4 );
-    const material = new THREE.MeshLambertMaterial( {color: 0xffff00} );
-    peixe.cauda = new THREE.Mesh( geometry, material );
+    // Cauda
+    peixe.cauda = new THREE.Mesh(
+        new THREE.CylinderGeometry(0, 5, 5, 4 ),
+        new THREE.MeshLambertMaterial( {color: 0xffff00} )
+    );
     peixe.cauda.position.x = -12; 
-    peixe.cauda.scale.set(2,1.5,.1);
+    peixe.cauda.scale.set(2,1.5,.3);
     peixe.cauda.rotation.z = -(Math.PI/2);
     peixe.add(peixe.cauda);
 
-    //barbatana lateral 1
-    peixe.barbatana1 = new THREE.Mesh(geometry, material);
+    // Barbatana lateral 1
+    peixe.barbatana1 = new THREE.Mesh(
+        new THREE.CylinderGeometry(0, 5, 5, 4 ),
+        new THREE.MeshLambertMaterial( {color: 0xffff00} )
+    );
     peixe.barbatana1.scale.set(.8,1,.1);
     peixe.barbatana1.position.x = 0; 
     peixe.barbatana1.rotation.x = 0; 
     peixe.barbatana1.position.y = 0; 
     peixe.barbatana1.rotation.y = THREE.MathUtils.degToRad(50); 
     peixe.barbatana1.position.z = 6;
-    peixe.barbatana1 .rotation.z = -(Math.PI/2);
+    peixe.barbatana1.rotation.z = -(Math.PI/2);
     peixe.add(peixe.barbatana1);
 
-    //barbatana lateral 2
-    peixe.barbatana2 = new THREE.Mesh(geometry, material);
-    peixe.barbatana2.scale.set(.8,1,.1);
-    peixe.barbatana2.position.x = 0; 
-    peixe.barbatana2.rotation.x = 0; 
-    peixe.barbatana2.position.y = 0; 
+    // Barbatana lateral 2
+    peixe.barbatana2 = peixe.barbatana1.clone();
+    peixe.barbatana2.rotation.y = (Math.PI); 
+    peixe.barbatana2.rotation.y = THREE.MathUtils.degToRad(130); 
     peixe.barbatana2.position.z = -6;
-    peixe.barbatana2 .rotation.z = (Math.PI/2);
-    peixe.barbatana2.rotation.y= (THREE.MathUtils.degToRad(140));
+    peixe.barbatana2.rotation.z = (Math.PI/2);
     peixe.add(peixe.barbatana2);
 
-
-    //cabeca 
-
-    const geometryCabeca = new THREE.ConeGeometry( 7.1, 10, 4 );
-    const materialCabeca = new THREE.MeshLambertMaterial( {color: 0xffff00} );
-    const peixeCabeca = new THREE.Mesh(geometryCabeca, materialCabeca);
-    
+    // Cabeça
+    const peixeCabeca = new THREE.Mesh(
+        new THREE.ConeGeometry( 7.1, 10, 4 ),
+        new THREE.MeshLambertMaterial( {color: 0xffff00} )
+    );
     peixeCabeca.position.x = 15;
-    peixeCabeca.rotation.x = -(Math.PI/4);
-    peixeCabeca.rotation.z = -(Math.PI/2);
-    
+    peixeCabeca.rotation.x = -(Math.PI / 4);
+    peixeCabeca.rotation.z = -(Math.PI / 2);
     peixe.add(peixeCabeca);
 
-    //olho 1
-    const geometryOlho = new THREE.BoxGeometry(1.5, 1.5, .1);
- 	const materialOlho = new THREE.MeshLambertMaterial({
-        color: "#000000" ,
-        shading: THREE.FlatShading
-    });
-    const peixeOlho = new THREE.Mesh(geometryOlho, materialOlho);
-    peixeOlho.position.x = 12;
-    peixeOlho.position.y = 2;
-    peixeOlho.position.z = 4;
-    peixe.add(peixeOlho);
+    // Olho 1
+    const peixeOlho1 = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 1.5, .1),
+        new THREE.MeshLambertMaterial({ color: 0x00000 })
+    );
+    peixeOlho1.position.x = 12;
+    peixeOlho1.position.y = 2;
+    peixeOlho1.position.z = 4;
+    peixe.add(peixeOlho1);
 
-    //olho 2
-    const peixeOlho2 = new THREE.Mesh(geometryOlho, materialOlho);
+    // Olho 2
+    const peixeOlho2 = peixeOlho1.clone();
     peixeOlho2.position.x = 12;
     peixeOlho2.position.y = 2;
     peixeOlho2.position.z = -4;
@@ -264,23 +339,21 @@ window.onload = function init() {
     //Tronco Homem
     homem = new THREE.Group();
     const geometryCorpoHomem = new THREE.CylinderGeometry( 3, 4, 8, 5, 4 );
- 	const materialCorpoHomem = new THREE.MeshLambertMaterial({
-        color: "yellow" ,
+    const materialCorpoHomem = new THREE.MeshLambertMaterial({
+        color: "yellow"
     });
-    
+
     const homemCorpo = new THREE.Mesh(geometryCorpoHomem, materialCorpoHomem);
     homemCorpo.rotation.y = -(Math.PI)/2
     homem.add(homemCorpo);
-
 
     //Braço Esquerda
     bracos = new THREE.Group();
     const geometryBracoEHomem = new THREE.CylinderGeometry(1, 0.7 , 10);
     geometryBracoEHomem.rotateX(-0.2)
     geometryBracoEHomem.rotateZ(1)
- 	const materialBracoEHomem = new THREE.MeshLambertMaterial({
-        color: "yellow" ,
-        shading: THREE.FlatShading
+    const materialBracoEHomem = new THREE.MeshLambertMaterial({
+        color: "yellow"
     });
 
     const homemBracoE = new THREE.Mesh(geometryBracoEHomem, materialBracoEHomem);
@@ -291,9 +364,8 @@ window.onload = function init() {
 
     //Mão Esquerda
     const geometryMaoEHomem = new THREE.SphereGeometry(0.7);
- 	const materialMaoEHomem = new THREE.MeshLambertMaterial({
-        color: "pink" ,
-        shading: THREE.FlatShading
+    const materialMaoEHomem = new THREE.MeshLambertMaterial({
+        color: "pink"
     });
 
     const homemMaoE = new THREE.Mesh(geometryMaoEHomem, materialMaoEHomem);
@@ -306,9 +378,8 @@ window.onload = function init() {
     const geometryBracoDHomem = new THREE.CylinderGeometry(1, 0.7 , 10);
     geometryBracoDHomem.rotateX(0.2)
     geometryBracoDHomem.rotateZ(1)
- 	const materialBracoDHomem = new THREE.MeshLambertMaterial({
-        color: "yellow" ,
-        shading: THREE.FlatShading
+    const materialBracoDHomem = new THREE.MeshLambertMaterial({
+        color: "yellow"
     });
 
     const homemBracoD = new THREE.Mesh(geometryBracoDHomem, materialBracoDHomem);
@@ -319,9 +390,8 @@ window.onload = function init() {
 
     //Mão Direita
     const geometryMaoDHomem = geometryMaoEHomem.clone();
- 	const materialMaoDHomem = new THREE.MeshLambertMaterial({
-        color: "pink" ,
-        shading: THREE.FlatShading
+    const materialMaoDHomem = new THREE.MeshLambertMaterial({
+        color: "pink"
     });
 
     const homemMaoD = new THREE.Mesh(geometryMaoDHomem, materialMaoDHomem);
@@ -332,9 +402,8 @@ window.onload = function init() {
 
     //Perna Esquerda 1
     const geometryPernaEHomem1 = new THREE.BoxGeometry(9, 2.4, 2.4);
- 	const materialPernaEHomem1 = new THREE.MeshLambertMaterial({
-        color: "black" ,
-        shading: THREE.FlatShading
+    const materialPernaEHomem1 = new THREE.MeshLambertMaterial({
+        color: "black"
     });
 
     const homemPernaE1 = new THREE.Mesh(geometryPernaEHomem1, materialPernaEHomem1);
@@ -345,9 +414,8 @@ window.onload = function init() {
 
     //Perna Direita 1
     const geometryPernaDHomem1 = geometryPernaEHomem1.clone();
- 	const materialPernaDHomem1 = new THREE.MeshLambertMaterial({
-        color: "black" ,
-        shading: THREE.FlatShading
+    const materialPernaDHomem1 = new THREE.MeshLambertMaterial({
+        color: "black"
     });
 
     const homemPernaD1 = new THREE.Mesh(geometryPernaDHomem1, materialPernaDHomem1);
@@ -358,9 +426,8 @@ window.onload = function init() {
 
     //Perna Esquerda 2
     const geometryPernaEHomem2 = new THREE.BoxGeometry(3, 2.4, 2.4);
- 	const materialPernaEHomem2 = new THREE.MeshLambertMaterial({
-        color: "black" ,
-        shading: THREE.FlatShading
+    const materialPernaEHomem2 = new THREE.MeshLambertMaterial({
+        color: "black"
     });
 
     const homemPernaE2 = new THREE.Mesh(geometryPernaEHomem2, materialPernaEHomem2);
@@ -371,9 +438,8 @@ window.onload = function init() {
 
     //Perna Direita 2
     const geometryPernaDHomem2 = geometryPernaEHomem2.clone();
- 	const materialPernaDHomem2 = new THREE.MeshLambertMaterial({
-        color: "black" ,
-        shading: THREE.FlatShading
+    const materialPernaDHomem2 = new THREE.MeshLambertMaterial({
+        color: "black"
     });
 
     const homemPernaD2 = new THREE.Mesh(geometryPernaDHomem2, materialPernaDHomem2);
@@ -384,7 +450,7 @@ window.onload = function init() {
 
     //Cabeça Homem
     const geometryCabecaHomem = new THREE.SphereGeometry(3, 5, 4);
- 	const materialCabecaHomem = new THREE.MeshLambertMaterial({
+    const materialCabecaHomem = new THREE.MeshLambertMaterial({
         color: "pink" ,
     });
     const homemCabeca = new THREE.Mesh(geometryCabecaHomem, materialCabecaHomem);
@@ -394,7 +460,7 @@ window.onload = function init() {
     //Cabelo1
     cabelo = new THREE.Group();
     const geometryCabeloHomem1 = new THREE.ConeGeometry(0.5, 1.5, 4);
- 	const materialCabeloHomem1 = new THREE.MeshLambertMaterial({
+    const materialCabeloHomem1 = new THREE.MeshLambertMaterial({
         color: "brown" ,
     });
     const homemCabelo1 = new THREE.Mesh(geometryCabeloHomem1, materialCabeloHomem1);
@@ -405,7 +471,7 @@ window.onload = function init() {
 
     //Cabelo2
     const geometryCabeloHomem2 = geometryCabeloHomem1.clone();
- 	const materialCabeloHomem2 = new THREE.MeshLambertMaterial({
+    const materialCabeloHomem2 = new THREE.MeshLambertMaterial({
         color: "brown" ,
     });
     const homemCabelo2 = new THREE.Mesh(geometryCabeloHomem2, materialCabeloHomem2);
@@ -416,7 +482,7 @@ window.onload = function init() {
 
     //Cabelo3
     const geometryCabeloHomem3 = geometryCabeloHomem1.clone();
- 	const materialCabeloHomem3 = new THREE.MeshLambertMaterial({
+    const materialCabeloHomem3 = new THREE.MeshLambertMaterial({
         color: "brown" ,
     });
     const homemCabelo3 = new THREE.Mesh(geometryCabeloHomem3, materialCabeloHomem3);
@@ -427,7 +493,7 @@ window.onload = function init() {
 
     //Cabelo4
     const geometryCabeloHomem4 = geometryCabeloHomem1.clone();
- 	const materialCabeloHomem4 = new THREE.MeshLambertMaterial({
+    const materialCabeloHomem4 = new THREE.MeshLambertMaterial({
         color: "brown" ,
     });
     const homemCabelo4 = new THREE.Mesh(geometryCabeloHomem4, materialCabeloHomem4);
@@ -438,7 +504,7 @@ window.onload = function init() {
 
     //Cabelo5
     const geometryCabeloHomem5 = geometryCabeloHomem1.clone();
- 	const materialCabeloHomem5 = new THREE.MeshLambertMaterial({
+    const materialCabeloHomem5 = new THREE.MeshLambertMaterial({
         color: "brown" ,
     });
     const homemCabelo5 = new THREE.Mesh(geometryCabeloHomem5, materialCabeloHomem5);
@@ -449,32 +515,29 @@ window.onload = function init() {
 
     //Cabelo6
     const geometryCabeloHomem6 = geometryCabeloHomem1.clone();
- 	const materialCabeloHomem6 = new THREE.MeshLambertMaterial({
+    const materialCabeloHomem6 = new THREE.MeshLambertMaterial({
         color: "brown" ,
     });
     const homemCabelo6 = new THREE.Mesh(geometryCabeloHomem6, materialCabeloHomem6);
     homemCabelo6.position.x = -1;
     homemCabelo6.position.y = 9.5;
-    // homemCabelo1.rotation.y = -0.30 
     cabelo.add(homemCabelo6);
 
     //Cabelo7
     const geometryCabeloHomem7 = geometryCabeloHomem1.clone();
- 	const materialCabeloHomem7 = new THREE.MeshLambertMaterial({
-        color: "brown" ,
+    const materialCabeloHomem7 = new THREE.MeshLambertMaterial({
+        color: "brown"
     });
     const homemCabelo7 = new THREE.Mesh(geometryCabeloHomem7, materialCabeloHomem7);
     homemCabelo7.position.x = -1.5;
     homemCabelo7.position.y = 9;
-    // homemCabelo1.rotation.y = -0.30 
     cabelo.add(homemCabelo7);
 
 
     //olho direita
     const geometryOlhoDHomem = new THREE.SphereGeometry(0.1);
- 	const materialOlhoDHomem = new THREE.MeshLambertMaterial({
-        color: "green" ,
-        shading: THREE.FlatShading
+    const materialOlhoDHomem = new THREE.MeshLambertMaterial({
+        color: "green"
     });
     const homemOlhoD = new THREE.Mesh(geometryOlhoDHomem, materialOlhoDHomem);
     homemOlhoD.position.x = 2.2;
@@ -484,9 +547,8 @@ window.onload = function init() {
 
     //olho direitaBranco
     const geometryOlhoDBHomem = new THREE.SphereGeometry(0.3);
- 	const materialOlhoDBHomem = new THREE.MeshLambertMaterial({
-        color: "White" ,
-        shading: THREE.FlatShading
+    const materialOlhoDBHomem = new THREE.MeshLambertMaterial({
+        color: "White"
     });
     const homemOlhoDB = new THREE.Mesh(geometryOlhoDBHomem, materialOlhoDBHomem);
     homemOlhoDB.position.x = 1.92;
@@ -496,9 +558,8 @@ window.onload = function init() {
 
     //olho esquerda
     const geometryOlhoEHomem = geometryOlhoDHomem.clone()
- 	const materialOlhoEHomem = new THREE.MeshLambertMaterial({
-        color: "green" ,
-        shading: THREE.FlatShading
+    const materialOlhoEHomem = new THREE.MeshLambertMaterial({
+        color: "green"
     });
     const homemOlhoE = new THREE.Mesh(geometryOlhoEHomem, materialOlhoEHomem);
     homemOlhoE.position.x = 2.2;
@@ -508,7 +569,7 @@ window.onload = function init() {
 
     //olho EsquerdaBranco
     const geometryOlhoEBHomem = geometryOlhoDBHomem.clone();
- 	const materialOlhoEBHomem = new THREE.MeshLambertMaterial({
+    const materialOlhoEBHomem = new THREE.MeshLambertMaterial({
         color: "White" ,
     });
     const homemOlhoEB = new THREE.Mesh(geometryOlhoEBHomem, materialOlhoEBHomem);
@@ -519,9 +580,8 @@ window.onload = function init() {
 
     //nariz
     const geometryNarizHomem = new THREE.ConeGeometry(0.3, 1);
- 	const materialNarizHomem = new THREE.MeshLambertMaterial({
-        color: "black" ,
-        shading: THREE.FlatShading
+    const materialNarizHomem = new THREE.MeshLambertMaterial({
+        color: "black"
     });
     const homemNariz = new THREE.Mesh(geometryNarizHomem, materialNarizHomem);
     homemNariz.position.x = 2.3;
@@ -531,9 +591,8 @@ window.onload = function init() {
     //boca
     barba = new THREE.Group();
     const geometryBocaHomem = new THREE.BoxGeometry(0.5, 0.5, 2);
- 	const materialBocaHomem = new THREE.MeshLambertMaterial({
-        color: "brown" ,
-        shading: THREE.FlatShading
+    const materialBocaHomem = new THREE.MeshLambertMaterial({
+        color: "brown"
     });
     const homemBoca = new THREE.Mesh(geometryBocaHomem, materialBocaHomem);
     homemBoca.position.x = 1.92;
@@ -542,9 +601,8 @@ window.onload = function init() {
 
     //bocabaixo
     const geometryBocaDupHomem = new THREE.BoxGeometry(0.5, 0.5, 2);
- 	const materialBocaDupHomem = new THREE.MeshLambertMaterial({
-        color: "brown" ,
-        shading: THREE.FlatShading
+    const materialBocaDupHomem = new THREE.MeshLambertMaterial({
+        color: "brown"
     });
     const homemBocaDup = new THREE.Mesh(geometryBocaDupHomem, materialBocaDupHomem);
     homemBocaDup.position.x = 1.92;
@@ -553,9 +611,8 @@ window.onload = function init() {
 
     //bocabaixo2
     const geometryBocaDupHomem2 = new THREE.BoxGeometry(0.5, 0.5, 1);
- 	const materialBocaDupHomem2 = new THREE.MeshLambertMaterial({
-        color: "brown" ,
-        shading: THREE.FlatShading
+    const materialBocaDupHomem2 = new THREE.MeshLambertMaterial({
+        color: "brown"
     });
     const homemBocaDup2 = new THREE.Mesh(geometryBocaDupHomem2, materialBocaDupHomem2);
     homemBocaDup2.position.x = 2.2;
@@ -564,9 +621,8 @@ window.onload = function init() {
 
     //Boca 2
     const geometryBocaHomem2 = new THREE.BoxGeometry(0.5, 1, 0.5);
- 	const materialBocaHomem2 = new THREE.MeshLambertMaterial({
-        color: "brown" ,
-        shading: THREE.FlatShading
+    const materialBocaHomem2 = new THREE.MeshLambertMaterial({
+        color: "brown"
     });
     const homemBoca2 = new THREE.Mesh(geometryBocaHomem2, materialBocaHomem2);
     homemBoca2.position.x = 1.92;
@@ -576,9 +632,8 @@ window.onload = function init() {
 
     //boca 3
     const geometryBocaHomem3 = new THREE.BoxGeometry(0.5, 1, 0.5);
- 	const materialBocaHomem3 = new THREE.MeshLambertMaterial({
-        color: "brown" ,
-        shading: THREE.FlatShading
+    const materialBocaHomem3 = new THREE.MeshLambertMaterial({
+        color: "brown"
     });
     const homemBoca3 = new THREE.Mesh(geometryBocaHomem3, materialBocaHomem3);
     homemBoca3.position.x = 1.92;
@@ -588,39 +643,84 @@ window.onload = function init() {
 
     //lingua
     const geometryLinguaHomem = new THREE.BoxGeometry(0.3, 0.1, 1.5);
- 	const materialLinguaHomem3 = new THREE.MeshLambertMaterial({
-        color: "white" ,
-        shading: THREE.FlatShading
+    const materialLinguaHomem3 = new THREE.MeshLambertMaterial({
+        color: "white"
     });
     const homemLingua = new THREE.Mesh(geometryLinguaHomem, materialLinguaHomem3);
     homemLingua.position.x = 2.1;
     homemLingua.position.y = 5.3;
     homem.add(homemLingua);
 
-    
-
-    //Objeto 3D Homem
-    homem.position.y = 12;
-    homem.position.x = 10;
-    homem.rotation.y = 0
+    //Objeto homem
     homem.add(barba)
     homem.add(cabelo);
     homem.add(bracos);
-    scene.add(homem);
+    homem.position.y = 13;
+    homem.position.x = 5;
+    barco.add(homem);
 
-
-    // Objeto 3D Peixe
+    // Objeto peixe
     peixe.position.y = -40;
     peixe.scale.set(.4,.4,.4);
     scene.add(peixe);
 
-  
-    // Objeto 3D Barco
-    barco.position.y = 0;
+    // Objeto barco
+    motor.position.set(18, 2, -1);
+    motor.rotation.z = Math.PI / 2;
+    // motor.add(pas);
+    barco.add(motor);
     scene.add(barco);
 
-    const barcoHelper = new THREE.AxesHelper(25);
-    barco.add(barcoHelper);
+    // Cana
+    cana = new THREE.Group();
+
+    // Corpo da cana
+    cana.corpoCana = new THREE.Mesh(
+        new THREE.CylinderGeometry(.3, .3, 40, 32),
+        new THREE.MeshPhongMaterial({ color: 0x000000 })
+    );
+    cana.corpoCana.position.x = 21;
+    cana.corpoCana.position.y = 12;
+    cana.corpoCana.rotation.z = -(Math.PI / 4);
+    homem.add(cana.corpoCana);
+
+    // Corda da cana
+    cana.geoCorda = new THREE.CylinderGeometry(.05, .05, initVal, 32);
+    cana.matCorda = new THREE.MeshPhongMaterial({ color: 0x26AFB7 });
+    cana.corda = new THREE.Mesh(cana.geoCorda, cana.matCorda);
+    cana.corda.position.x = 35;
+    cana.corda.position.y = 1;
+    homem.add(cana.corda);
+
+    // Carreto da cana
+    cana.carretoCana = new THREE.Mesh(
+        new THREE.CylinderGeometry(.75, .75, 3, 32),
+        new THREE.MeshPhongMaterial({ color: 0xBDBDBD })
+    );
+    cana.carretoCana.rotation.z = -(Math.PI / 4);
+    cana.carretoCana.position.x = 9;
+    cana.carretoCana.position.y = -1;
+    homem.add(cana.carretoCana);
+
+    // Isco da cana
+    cana.isco = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 32, 16),
+        new THREE.MeshPhongMaterial({ color: 0xB5927C })
+    );
+    cana.isco.position.x = 35;
+    cana.isco.position.y = -25;
+    cana.isco.posx = 35;
+    homem.add(cana.isco);
+
+
+    // Hitbox do peixe
+    // peixe.hitbox = new THREE.Mesh(
+    //     new THREE.SphereGeometry(7, 32, 16),
+    //     new THREE.MeshPhongMaterial({ color: 0xB5927C, transparent: true, opacity: .35 })
+    // );
+    // peixe.hitbox.position.x = peixe.position.x;
+    // peixe.hitbox.position.y = peixe.position.y;
+    // scene.add(peixe.hitbox)
 
     // Relógio > para animação das ondas e do barco
     clock = new THREE.Clock();
@@ -630,13 +730,38 @@ window.onload = function init() {
 }
 
 function render() {
-    
+    // console.log(camera.position)
     // Animação da onda a cada render executado
     verticesOnda.forEach((vd, idx) => {
         geoAgua.attributes.position.setY(idx, (vd.initH + Math.sin(clock.getElapsedTime() + vd.phase) * vd.amplitude));
     });
     geoAgua.attributes.position.needsUpdate = true;
     geoAgua.computeVertexNormals();
+
+    // Lidar com os controlos
+    if (keys["ArrowUp"]) {
+        aumentarCorda(-1)
+    }
+
+    if (keys["ArrowDown"]) {
+        aumentarCorda(1)
+    }
+
+    if (keys["a"]) {
+        if (barco.position.x > -(window.innerWidth * .04)) {
+            barco.position.x -= .3;
+            cana.isco.posx -= .3;
+        }
+        motor.rotation.x += 0.2;
+    }
+
+    if (keys["d"]) {
+        if (barco.position.x < (window.innerWidth * .04)) {
+            barco.position.x += .3;
+            cana.isco.posx += .3;
+        }
+        motor.rotation.x -= 0.2;
+    }
 
     // Animação do barco
     if (isFloatingLeft) {
@@ -664,25 +789,60 @@ function render() {
             isFloatingUp = true;
         }
     }
-   
-    if(peixe.position.x>window.innerWidth * .05){
-        maximoAlcance=true;
-    }
-    else if(maximoAlcance==false || maximoAlcance2==true){
-        peixe.position.x+=.3
-    }
-    if(maximoAlcance){
-        maximoAlcance2=false;
-        peixe.rotation.y=THREE.MathUtils.degToRad(180)
-        peixe.position.x-=.3
-        if( peixe.position.x<-window.innerWidth * .05){
-            peixe.rotation.y=THREE.MathUtils.degToRad(0)
-            maximoAlcance2=true;
-            maximoAlcance=false;
+
+    // Aminação do cabelo
+    if (isMovingLeft) {
+        // O cabelo esta-se mecher para a esquerda
+        // Verifica se já atingiu o ponto máximo de oscilação
+        cabelo.rotation.z -= 0.0009;
+        if (cabelo.rotation.z <= -0.03) {
+            isMovingLeft = false;
         }
-        
+    } else {
+        cabelo.rotation.z += 0.0009;
+        if (cabelo.rotation.z >= 0.03) {
+            isMovingLeft = true;
+        }
     }
-    
+
+    // Aminação da barba
+    if (isBeardMoving) {
+        // O cabelo esta-se mecher para a esquerda
+        // Verifica se já atingiu o ponto máximo de oscilação
+        barba.rotation.x -= 0.0002;
+        if (barba.rotation.x <= -0.03) {
+            isBeardMoving = false;
+        }
+    } else {
+        barba.rotation.x += 0.0002;
+        if (barba.rotation.x >= 0.03) {
+            isBeardMoving = true;
+        }
+    }
+
+    // Animação do peixe
+    if (shouldBeAnimated) {
+        if(peixe.position.x>window.innerWidth * .05){
+            maximoAlcance=true;
+        }
+        else if(maximoAlcance==false || maximoAlcance2==true){
+            peixe.position.x+=.3
+        }
+        if(maximoAlcance){
+            maximoAlcance2=false;
+            peixe.rotation.y=THREE.MathUtils.degToRad(180)
+            peixe.position.x-=.3
+            if( peixe.position.x<-window.innerWidth * .05){
+                peixe.rotation.y=THREE.MathUtils.degToRad(0)
+                maximoAlcance2=true;
+                maximoAlcance=false;
+            }
+        }
+    }
+
+    // peixe.hitbox.position.x = peixe.position.x;
+    // peixe.hitbox.position.y = peixe.position.y;
+
     //Barbatana 1
     if((peixe.barbatana1.rotation.y<1) && maxAngleBarbatana==false){
         peixe.barbatana1.rotation.y+=THREE.MathUtils.degToRad(2)
@@ -698,7 +858,7 @@ function render() {
             maxAngleBarbatana=false;
         }
     }
-    
+
    //Barbatana 2
     if((peixe.barbatana2.rotation.y<3.4) && maxAngleBarbatana2==false){
         peixe.barbatana2.rotation.y+=THREE.MathUtils.degToRad(2)
@@ -730,47 +890,88 @@ function render() {
             maxAngleCauda=false;
         }
     }
-    
+    // Verificar se o peixe mordeu o isco
+    if (areObjectsColliding(peixe.position.x, -53, cana.isco.posx, cana.isco.position.y, 7, 1) || peixeMordeu) {
+        peixeMordeu = true;
+        shouldBeAnimated = false;
+        peixe.rotation.z = Math.PI / 2;
+        peixe.position.x = cana.isco.position.x;
+        peixe.position.y = cana.isco.position.y;
+        scene.remove(peixe)
+        homem.add(peixe)
+        if (peixe.position.y >= -5) {
+            document.querySelector("#quantity").innerHTML = parseInt(document.querySelector("#quantity").innerHTML) + 1;
+            homem.remove(peixe)
+            scene.add(peixe);
+            peixe.rotation.z = 0;
+            peixe.position.y = -40;
+            peixe.position.x = 0;
+            peixeMordeu = false;
+            shouldBeAnimated = true;
 
-
-    
-
-    // Aminação do cabelo
-    if (isMovingLeft) {
-        // O cabelo esta-se mecher para a esquerda
-        // Verifica se já atingiu o ponto máximo de oscilação
-        cabelo.rotation.z -= 0.0005;
-        if (cabelo.rotation.z <= -0.03) {
-            isMovingLeft = false;
-        }
-    } else {
-        cabelo.rotation.z += 0.0005;
-        if (cabelo.rotation.z >= 0.03) {
-            isMovingLeft = true;
-        }
-    }
-
-    // Aminação da barba
-    if (isBeardMoving) {
-        // O cabelo esta-se mecher para a esquerda
-        // Verifica se já atingiu o ponto máximo de oscilação
-        barba.rotation.x -= 0.0002;
-        if (barba.rotation.x <= -0.03) {
-            isBeardMoving = false;
-        }
-    } else {
-        barba.rotation.x += 0.0002;
-        if (barba.rotation.x >= 0.03) {
-            isBeardMoving = true;
+            if (!maximoAlcance) {
+                maximoAlcance = true;
+            }
+            if (!maximoAlcance2) {
+                maximoAlcance2 = true;
+            }
         }
     }
-    
 
     renderer.render(scene, camera);
+}
+
+function aumentarCorda(a) {
+    // a = tamanho que vai ser aumentado à corda
+
+    if (isPullingRod) {
+        bracos.rotation.z += 0.009;
+        bracos.position.x += 0.07;
+        if (bracos.rotation.z > 0.15) {
+            isPullingRod = false;
+        }
+    } else {
+        bracos.rotation.z -= 0.009;
+        bracos.position.x -= 0.07;
+        if (bracos.rotation.z <= -0.05) {
+            isPullingRod = true;
+        }
+    }
+
+    if ((keys["ArrowUp"] && initVal > 30) || (keys["ArrowDown"] && initVal < 100)) {
+        initVal += a;
+        cana.lastPos = cana.corda.position.y - (a / 2);
+    }
+
+    homem.remove(cana.corda);
+    cana.geoCorda = new THREE.CylinderGeometry(.05, .05, initVal, 32);
+    cana.corda = new THREE.Mesh(cana.geoCorda, cana.matCorda);
+    cana.corda.position.x = 35;
+    cana.isco.position.y = -(initVal - 25)
+    cana.corda.position.y = cana.lastPos;
+    homem.add(cana.corda);
+    
+
+}
+
+function areObjectsColliding(x1, y1, x2, y2, r1, r2) {
+    // PDF 07_OBJECTS_COLLISIONS, pág. 20/29
+    return (Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)) < r1 + r2) ? true : false;
 }
 
 window.addEventListener("resize", function() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize( window.innerWidth, window.innerHeight );
+});
+
+window.addEventListener("keydown", event => {
+    keys[event.key] = true;
+    // Como o jogo está em modo fullscreen e necessitamos de obter o input para o nome do utilizador
+    // o preventDefault não faz diferença nenhuma
+    // event.preventDefault();
+});
+
+window.addEventListener("keyup", event => {
+    keys[event.key] = false;
 });
