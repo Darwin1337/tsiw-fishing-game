@@ -1,5 +1,4 @@
 import * as THREE from './three.module.js';
-// import { OrbitControls } from "https://cdn.skypack.dev/pin/three@v0.136.0-4Px7Kx1INqCFBN0tXUQc/mode=imports,min/unoptimized/examples/jsm/controls/OrbitControls.js";
 import { Sky } from "./Sky.js";
 import * as BufferGeometryUtils from "./BufferGeometryUtils.js"
 // Geral
@@ -15,7 +14,7 @@ let geoAgua, verticesOnda = [];
 let clock;
 
 // Barco
-let barco, isFloatingLeft = true, isFloatingUp = true, motor, pas;
+let barco, isFloatingLeft = true, isFloatingUp = true, motor, acel = 0;
 
 // Peixe
 let peixe, maxAngleBarbatana = false, maxAngleBarbatana2 = false, maxAngleCauda = false, maximoAlcance = false, maximoAlcance2 = false, peixeMordeu = false, shouldBeAnimated = true;
@@ -24,10 +23,13 @@ let peixe, maxAngleBarbatana = false, maxAngleBarbatana2 = false, maxAngleCauda 
 let homem, bracos, cabelo, barba, isMovingLeft = true, isBeardMoving = true, isPullingRod = true;
 
 // Cana de pesca
-let cana, initVal = 50;
+let cana, corda, homemBracoD, geoCorda, matCorda, ancora, isco, initVal = 50, isDangling = true;
 
 // Array que irá ficar com as teclas pressionadas
 let keys = new Array();
+
+// Ligar a hitbox do peixe
+let hitboxPeixe = false;
 
 // Carregador de texturas
 const textureLoader = new THREE.TextureLoader();
@@ -42,18 +44,134 @@ window.onload = function init() {
     camera.position.z = 81.5;
     camera.lookAt(scene.position);
 
-    renderer = new THREE.WebGLRenderer({
-        antialias: true
-    });
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor("cyan");
     document.body.appendChild(renderer.domElement);
     
     scene = new THREE.Scene();
 
-    // Controlos
-    // controls = new OrbitControls(camera, renderer.domElement);
+    // Luzes
+    criarLuzes();
 
+    // Água e fundo do oceano
+    criarAgua();
+
+    // Céu
+    criarCeu();
+    
+    // Barco
+    criarBarco();
+
+    // Peixe
+    criarPeixe();
+
+    // Homem
+    criarHomem();
+
+    // Cana
+    criarCana();
+
+    // Relógio > para animação das ondas e do barco
+    clock = new THREE.Clock();
+    
+    // Renderizar
+    renderer.setAnimationLoop(render);
+}
+
+function render() {
+    // Animações
+    animacaoMar();
+    animacaoBarco();
+    animacaoCana();
+    animacaoPeixe();
+    animacaoHomem();
+
+    // Lidar com os controlos do teclado
+    mapearControlos();
+
+    // Lidar com a colisão do peixe com o isco
+    colisaoPeixeIsco();
+
+    renderer.render(scene, camera);
+}
+
+function aumentarCorda(a) {
+    // a = tamanho que vai ser aumentado à corda
+
+    // Animação dos braços
+    if (isPullingRod) {
+        homemBracoD.rotation.z += 0.009;
+        homemBracoD.position.x += 0.07;
+        if (homemBracoD.rotation.z > 0.15) {
+            isPullingRod = false;
+        }
+    } else {
+        homemBracoD.rotation.z -= 0.009;
+        homemBracoD.position.x -= 0.07;
+        if (homemBracoD.rotation.z <= -0.05) {
+            isPullingRod = true;
+        }
+    }
+
+    if ((keys["ArrowUp"] && initVal > 30) || (keys["ArrowDown"] && initVal < 100)) {
+        initVal += a;
+        cana.lastPos = corda.position.y - (a / 2);
+        isco.posy -= a;
+    }
+
+    ancora.remove(corda);
+    geoCorda = new THREE.CylinderGeometry(.05, .05, initVal, 32);
+    matCorda = new THREE.MeshPhongMaterial({ color: 0x26AFB7 });
+    corda = new THREE.Mesh(geoCorda, matCorda);
+    isco.position.y = cana.lastPos;
+    corda.position.y = cana.lastPos;
+    corda.add(isco);
+    ancora.add(corda);
+}
+
+function peixeMordeuIsco(x1, y1, x2, y2, r1, r2) {
+    // PDF 07_OBJECTS_COLLISIONS, pág. 20/29
+    return (Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)) < r1 + r2) ? true : false;
+}
+
+function colisaoPeixeIsco() {
+    // console.log("Isco: " + isco.posx + " : " + isco.posy);
+    // console.log("Peixe: " + peixe.position.x + " : " + peixe.position.y);
+
+    // Para ativar a hitbox do peixe settar a seguinte variavel a true
+    // hitboxPeixe = true;
+
+    // Verificar se o peixe mordeu o isco
+    if (peixeMordeuIsco(peixe.position.x, peixe.position.y, isco.posx, isco.posy, 7, 1) || peixeMordeu) {
+        peixeMordeu = true;
+        shouldBeAnimated = false;
+        scene.remove(peixe);
+        ancora.add(peixe);
+        peixe.position.x = corda.position.x;
+        peixe.position.y = isco.posy - 42;
+        peixe.rotation.z = Math.PI / 2;
+        if (peixe.position.y >= -34.5) {
+            document.querySelector("#quantity").innerHTML = parseInt(document.querySelector("#quantity").innerHTML) + 1;
+            ancora.remove(peixe);
+            scene.add(peixe);
+            peixe.rotation.z = 0;
+            peixe.position.y = -40;
+            peixe.position.x = 0;
+            peixeMordeu = false;
+            shouldBeAnimated = true;
+
+            if (!maximoAlcance) {
+                maximoAlcance = true;
+            }
+            if (!maximoAlcance2) {
+                maximoAlcance2 = true;
+            }
+        }
+    }
+}
+
+function criarLuzes() {
     // Luzes
     // Luz hemisfério
     const light1 = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
@@ -72,56 +190,11 @@ window.onload = function init() {
     const light3 = new THREE.DirectionalLight(0xffffff, 0.5 );
     light3.position.z = -100;
     light3.position.y = 100;
-    light3.castShadow = true; // default false
+    light3.castShadow = true;
     scene.add(light3);
+}
 
-    // Fundo do oceano
-    const geoFundoOceano = new THREE.PlaneGeometry(500, 150);
-    const matFundoOceano = new THREE.MeshPhongMaterial({
-        transparent: true,
-        opacity: 1,
-        color: 0x4771A8,
-        side: THREE.DoubleSide
-    });
-    const meshFundoOceano = new THREE.Mesh(geoFundoOceano, matFundoOceano);
-    meshFundoOceano.position.z = -25;
-    meshFundoOceano.position.y = -76;
-    scene.add(meshFundoOceano);
-
-    // Água (cortesia de prisoner849: https://jsfiddle.net/prisoner849/79z8jyLk/)
-    geoAgua = new THREE.PlaneGeometry(500, 100, 100, 100);
-    geoAgua.rotateX(-Math.PI * 0.5);
-
-    // Água: posição das ondas inical
-    const v3 = new THREE.Vector3();
-    for (let i = 0; i < geoAgua.attributes.position.count; i++) {
-        v3.fromBufferAttribute(geoAgua.attributes.position, i);
-        verticesOnda.push({
-            initH: v3.y,
-            amplitude: THREE.MathUtils.randFloatSpread(2),
-            phase: THREE.MathUtils.randFloat(0, Math.PI)
-        });
-    }
-
-    const matAgua = new THREE.MeshLambertMaterial({color: 0x26578c});
-    const meshAgua = new THREE.Mesh(geoAgua, matAgua);
-    meshAgua.position.z = -25;
-    scene.add(meshAgua);
-
-    // Céu e sol (https://threejs.org/examples/webgl_shaders_sky.html)
-    ceu = new Sky();
-    ceu.scale.setScalar(15000);
-    scene.add(ceu);
-
-    sol = new THREE.Vector3();
-
-    ceu.material.uniforms['turbidity'].value =.0;
-    ceu.material.uniforms['rayleigh'].value = .5;
-    ceu.material.uniforms['mieCoefficient'].value = 0.005;
-    ceu.material.uniforms['mieDirectionalG'].value = .7;
-    sol.setFromSphericalCoords(1, THREE.MathUtils.degToRad(84), THREE.MathUtils.degToRad(180));
-    ceu.material.uniforms['sunPosition'].value.copy(sol);
-
+function criarBarco() {
     // Barco
     // Irá ser utilizado o BufferGeometryUtils porque todas as geometrias do barco irão ter o mesmo material
     let barcoGeometries = [];
@@ -203,12 +276,7 @@ window.onload = function init() {
 
     motor = new THREE.Mesh(geometryMotorBarco, materialMotorBarco);
 
-    // MotorBarco.position.y = 2;
-    // MotorBarco.position.z = -1;
-    // MotorBarco.rotation.z = Math.PI/2
-
     //Pás do Motor Barco 1
-    pas = new THREE.Group();
     const geometryMotorPA1 = new THREE.BoxGeometry(1, 5, 0.5);
     const materialMotorPA1 = new THREE.MeshLambertMaterial({
         color: "grey"
@@ -267,6 +335,15 @@ window.onload = function init() {
         bumpMap: barcoHeight
     }));
 
+    // Objeto barco
+    motor.position.set(18, 2, -1);
+    motor.rotation.z = Math.PI / 2;
+    // motor.add(pas);
+    barco.add(motor);
+    scene.add(barco);
+}
+
+function criarPeixe() {
     // Objeto peixe
     peixe = new THREE.Group();
 
@@ -336,6 +413,24 @@ window.onload = function init() {
     peixeOlho2.position.z = -4;
     peixe.add(peixeOlho2);
 
+    // Objeto peixe
+    peixe.position.y = -40;
+    peixe.scale.set(.4,.4,.4);
+    scene.add(peixe);
+
+    // Hitbox do peixe
+    if (hitboxPeixe) {
+        peixe.hitbox = new THREE.Mesh(
+            new THREE.SphereGeometry(7, 32, 16),
+            new THREE.MeshPhongMaterial({ color: 0xB5927C, transparent: true, opacity: .35 })
+        );
+        peixe.hitbox.position.x = peixe.position.x;
+        peixe.hitbox.position.y = peixe.position.y;
+        scene.add(peixe.hitbox)
+    }
+}
+
+function criarHomem() {
     //Tronco Homem
     homem = new THREE.Group();
     const geometryCorpoHomem = new THREE.CylinderGeometry( 3, 4, 8, 5, 4 );
@@ -369,10 +464,10 @@ window.onload = function init() {
     });
 
     const homemMaoE = new THREE.Mesh(geometryMaoEHomem, materialMaoEHomem);
-    homemMaoE.position.x = 7;
-    homemMaoE.position.y = -2.6;
-    homemMaoE.position.z = -2;
-    bracos.add(homemMaoE);
+    homemMaoE.position.x = 4.5;
+    homemMaoE.position.y = -2.8;
+    homemMaoE.position.z = 1;
+    homemBracoE.add(homemMaoE);
 
     //Braço Direita
     const geometryBracoDHomem = new THREE.CylinderGeometry(1, 0.7 , 10);
@@ -382,7 +477,7 @@ window.onload = function init() {
         color: "yellow"
     });
 
-    const homemBracoD = new THREE.Mesh(geometryBracoDHomem, materialBracoDHomem);
+    homemBracoD = new THREE.Mesh(geometryBracoDHomem, materialBracoDHomem);
     homemBracoD.position.x = 3;
     homemBracoD.position.y = 0;
     homemBracoD.position.z = 3;
@@ -395,10 +490,10 @@ window.onload = function init() {
     });
 
     const homemMaoD = new THREE.Mesh(geometryMaoDHomem, materialMaoDHomem);
-    homemMaoD.position.x = 7;
-    homemMaoD.position.y = -2.6;
-    homemMaoD.position.z = 2;
-    bracos.add(homemMaoD);
+    homemMaoD.position.x = 4.5;
+    homemMaoD.position.y = -2.8;
+    homemMaoD.position.z = -1;
+    homemBracoD.add(homemMaoD);
 
     //Perna Esquerda 1
     const geometryPernaEHomem1 = new THREE.BoxGeometry(9, 2.4, 2.4);
@@ -472,7 +567,7 @@ window.onload = function init() {
     //Cabelo2
     const geometryCabeloHomem2 = geometryCabeloHomem1.clone();
     const materialCabeloHomem2 = new THREE.MeshLambertMaterial({
-        color: "brown" ,
+        color: "brown",
     });
     const homemCabelo2 = new THREE.Mesh(geometryCabeloHomem2, materialCabeloHomem2);
     homemCabelo2.position.x = 1;
@@ -483,7 +578,7 @@ window.onload = function init() {
     //Cabelo3
     const geometryCabeloHomem3 = geometryCabeloHomem1.clone();
     const materialCabeloHomem3 = new THREE.MeshLambertMaterial({
-        color: "brown" ,
+        color: "brown",
     });
     const homemCabelo3 = new THREE.Mesh(geometryCabeloHomem3, materialCabeloHomem3);
     homemCabelo3.position.x = 0.5;
@@ -494,7 +589,7 @@ window.onload = function init() {
     //Cabelo4
     const geometryCabeloHomem4 = geometryCabeloHomem1.clone();
     const materialCabeloHomem4 = new THREE.MeshLambertMaterial({
-        color: "brown" ,
+        color: "brown",
     });
     const homemCabelo4 = new THREE.Mesh(geometryCabeloHomem4, materialCabeloHomem4);
     homemCabelo4.position.x = 0;
@@ -658,111 +753,129 @@ window.onload = function init() {
     homem.position.y = 13;
     homem.position.x = 5;
     barco.add(homem);
+}
 
-    // Objeto peixe
-    peixe.position.y = -40;
-    peixe.scale.set(.4,.4,.4);
-    scene.add(peixe);
+function criarCeu() {
+    // Céu e sol (https://threejs.org/examples/webgl_shaders_sky.html)
+    ceu = new Sky();
+    ceu.scale.setScalar(15000);
+    scene.add(ceu);
 
-    // Objeto barco
-    motor.position.set(18, 2, -1);
-    motor.rotation.z = Math.PI / 2;
-    // motor.add(pas);
-    barco.add(motor);
-    scene.add(barco);
+    sol = new THREE.Vector3();
 
-    // Cana
+    ceu.material.uniforms['turbidity'].value =.0;
+    ceu.material.uniforms['rayleigh'].value = .5;
+    ceu.material.uniforms['mieCoefficient'].value = 0.005;
+    ceu.material.uniforms['mieDirectionalG'].value = .7;
+    sol.setFromSphericalCoords(1, THREE.MathUtils.degToRad(84), THREE.MathUtils.degToRad(180));
+    ceu.material.uniforms['sunPosition'].value.copy(sol);
+}
+
+function criarAgua() {
+    // Fundo do oceano
+    const geoFundoOceano = new THREE.PlaneGeometry(500, 150);
+    const matFundoOceano = new THREE.MeshPhongMaterial({
+        transparent: true,
+        opacity: 1,
+        color: 0x4771A8,
+        side: THREE.DoubleSide
+    });
+    const meshFundoOceano = new THREE.Mesh(geoFundoOceano, matFundoOceano);
+    meshFundoOceano.position.z = -25;
+    meshFundoOceano.position.y = -76;
+    scene.add(meshFundoOceano);
+
+    // Água (cortesia de prisoner849: https://jsfiddle.net/prisoner849/79z8jyLk/)
+    geoAgua = new THREE.PlaneGeometry(500, 100, 100, 100);
+    geoAgua.rotateX(-Math.PI * 0.5);
+
+    // Água: posição das ondas inical
+    const v3 = new THREE.Vector3();
+    for (let i = 0; i < geoAgua.attributes.position.count; i++) {
+        v3.fromBufferAttribute(geoAgua.attributes.position, i);
+        verticesOnda.push({
+            initH: v3.y,
+            amplitude: THREE.MathUtils.randFloatSpread(2),
+            phase: THREE.MathUtils.randFloat(0, Math.PI)
+        });
+    }
+
+    const matAgua = new THREE.MeshLambertMaterial({color: 0x26578c});
+    const meshAgua = new THREE.Mesh(geoAgua, matAgua);
+    meshAgua.position.z = -25;
+    scene.add(meshAgua);
+}
+
+function criarCana() {
+    // Cana - pivot
     cana = new THREE.Group();
+    cana.position.x = -19;
+    cana.position.y = 11;
+    scene.add(cana)
 
     // Corpo da cana
-    cana.corpoCana = new THREE.Mesh(
+    const corpoCana = new THREE.Mesh(
         new THREE.CylinderGeometry(.3, .3, 40, 32),
         new THREE.MeshPhongMaterial({ color: 0x000000 })
     );
-    cana.corpoCana.position.x = 21;
-    cana.corpoCana.position.y = 12;
-    cana.corpoCana.rotation.z = -(Math.PI / 4);
-    homem.add(cana.corpoCana);
+    corpoCana.rotation.z = -(Math.PI / 4);
+    corpoCana.position.x = 38;
+    cana.add(corpoCana);
+
+    ancora = new THREE.Object3D();
+    ancora.position.x = 52;
+    ancora.position.y = 13.5;
 
     // Corda da cana
-    cana.geoCorda = new THREE.CylinderGeometry(.05, .05, initVal, 32);
-    cana.matCorda = new THREE.MeshPhongMaterial({ color: 0x26AFB7 });
-    cana.corda = new THREE.Mesh(cana.geoCorda, cana.matCorda);
-    cana.corda.position.x = 35;
-    cana.corda.position.y = 1;
-    homem.add(cana.corda);
+    geoCorda = new THREE.CylinderGeometry(.05, .05, initVal, 32);
+    matCorda = new THREE.MeshPhongMaterial({ color: 0x26AFB7 });
+    corda = new THREE.Mesh(geoCorda, matCorda);
+    corda.position.y = -25;
 
     // Carreto da cana
-    cana.carretoCana = new THREE.Mesh(
+    const carretoCana = new THREE.Mesh(
         new THREE.CylinderGeometry(.75, .75, 3, 32),
         new THREE.MeshPhongMaterial({ color: 0xBDBDBD })
     );
-    cana.carretoCana.rotation.z = -(Math.PI / 4);
-    cana.carretoCana.position.x = 9;
-    cana.carretoCana.position.y = -1;
-    homem.add(cana.carretoCana);
+    carretoCana.rotation.z = -(Math.PI / 4);
+    carretoCana.position.x = 26;
+    carretoCana.position.y = -13;
+    cana.add(carretoCana);
 
     // Isco da cana
-    cana.isco = new THREE.Mesh(
+    isco = new THREE.Mesh(
         new THREE.SphereGeometry(1, 32, 16),
         new THREE.MeshPhongMaterial({ color: 0xB5927C })
     );
-    cana.isco.position.x = 35;
-    cana.isco.position.y = -25;
-    cana.isco.posx = 35;
-    homem.add(cana.isco);
+    isco.position.y = -25;
+    isco.posx = 38;
+    isco.posy = -12.5
+    corda.add(isco);
 
-
-    // Hitbox do peixe
-    // peixe.hitbox = new THREE.Mesh(
-    //     new THREE.SphereGeometry(7, 32, 16),
-    //     new THREE.MeshPhongMaterial({ color: 0xB5927C, transparent: true, opacity: .35 })
-    // );
-    // peixe.hitbox.position.x = peixe.position.x;
-    // peixe.hitbox.position.y = peixe.position.y;
-    // scene.add(peixe.hitbox)
-
-    // Relógio > para animação das ondas e do barco
-    clock = new THREE.Clock();
-    
-    // Renderizar
-    renderer.setAnimationLoop(render);
+    ancora.add(corda);
+    cana.add(ancora);
+    homem.add(cana);
 }
 
-function render() {
-    // console.log(camera.position)
-    // Animação da onda a cada render executado
-    verticesOnda.forEach((vd, idx) => {
-        geoAgua.attributes.position.setY(idx, (vd.initH + Math.sin(clock.getElapsedTime() + vd.phase) * vd.amplitude));
-    });
-    geoAgua.attributes.position.needsUpdate = true;
-    geoAgua.computeVertexNormals();
+function animacaoCana() {
+    // Animação do barco
+    if (isDangling) {
+        // O barco está a flutuar para a esquerda
+        // Verificar se já atingiu o ponto máximo de flutuação
+        ancora.rotation.z -= 0.0008;
 
-    // Lidar com os controlos
-    if (keys["ArrowUp"]) {
-        aumentarCorda(-1)
-    }
-
-    if (keys["ArrowDown"]) {
-        aumentarCorda(1)
-    }
-
-    if (keys["a"]) {
-        if (barco.position.x > -(window.innerWidth * .04)) {
-            barco.position.x -= .3;
-            cana.isco.posx -= .3;
+        if (ancora.rotation.z <= -0.03) {
+            isDangling = false;
         }
-        motor.rotation.x += 0.2;
-    }
-
-    if (keys["d"]) {
-        if (barco.position.x < (window.innerWidth * .04)) {
-            barco.position.x += .3;
-            cana.isco.posx += .3;
+    } else {
+        ancora.rotation.z += 0.001;
+        if (ancora.rotation.z >= 0.03) {
+            isDangling = true;
         }
-        motor.rotation.x -= 0.2;
     }
+}
 
+function animacaoBarco() {
     // Animação do barco
     if (isFloatingLeft) {
         // O barco está a flutuar para a esquerda
@@ -789,37 +902,18 @@ function render() {
             isFloatingUp = true;
         }
     }
+}
 
-    // Aminação do cabelo
-    if (isMovingLeft) {
-        // O cabelo esta-se mecher para a esquerda
-        // Verifica se já atingiu o ponto máximo de oscilação
-        cabelo.rotation.z -= 0.0009;
-        if (cabelo.rotation.z <= -0.03) {
-            isMovingLeft = false;
-        }
-    } else {
-        cabelo.rotation.z += 0.0009;
-        if (cabelo.rotation.z >= 0.03) {
-            isMovingLeft = true;
-        }
-    }
+function animacaoMar() {
+    // Animação da onda a cada render executado
+    verticesOnda.forEach((vd, idx) => {
+        geoAgua.attributes.position.setY(idx, (vd.initH + Math.sin(clock.getElapsedTime() + vd.phase) * vd.amplitude));
+    });
+    geoAgua.attributes.position.needsUpdate = true;
+    geoAgua.computeVertexNormals();
+}
 
-    // Aminação da barba
-    if (isBeardMoving) {
-        // O cabelo esta-se mecher para a esquerda
-        // Verifica se já atingiu o ponto máximo de oscilação
-        barba.rotation.x -= 0.0002;
-        if (barba.rotation.x <= -0.03) {
-            isBeardMoving = false;
-        }
-    } else {
-        barba.rotation.x += 0.0002;
-        if (barba.rotation.x >= 0.03) {
-            isBeardMoving = true;
-        }
-    }
-
+function animacaoPeixe() {
     // Animação do peixe
     if (shouldBeAnimated) {
         if(peixe.position.x>window.innerWidth * .05){
@@ -840,8 +934,11 @@ function render() {
         }
     }
 
-    // peixe.hitbox.position.x = peixe.position.x;
-    // peixe.hitbox.position.y = peixe.position.y;
+    // Mover a hitbox do peixe (se a mesma estiver ativa)
+    if (hitboxPeixe) {
+        peixe.hitbox.position.x = peixe.position.x;
+        peixe.hitbox.position.y = peixe.position.y;
+    }
 
     //Barbatana 1
     if((peixe.barbatana1.rotation.y<1) && maxAngleBarbatana==false){
@@ -890,73 +987,77 @@ function render() {
             maxAngleCauda=false;
         }
     }
-    // Verificar se o peixe mordeu o isco
-    if (areObjectsColliding(peixe.position.x, -53, cana.isco.posx, cana.isco.position.y, 7, 1) || peixeMordeu) {
-        peixeMordeu = true;
-        shouldBeAnimated = false;
-        peixe.rotation.z = Math.PI / 2;
-        peixe.position.x = cana.isco.position.x;
-        peixe.position.y = cana.isco.position.y;
-        scene.remove(peixe)
-        homem.add(peixe)
-        if (peixe.position.y >= -5) {
-            document.querySelector("#quantity").innerHTML = parseInt(document.querySelector("#quantity").innerHTML) + 1;
-            homem.remove(peixe)
-            scene.add(peixe);
-            peixe.rotation.z = 0;
-            peixe.position.y = -40;
-            peixe.position.x = 0;
-            peixeMordeu = false;
-            shouldBeAnimated = true;
-
-            if (!maximoAlcance) {
-                maximoAlcance = true;
-            }
-            if (!maximoAlcance2) {
-                maximoAlcance2 = true;
-            }
-        }
-    }
-
-    renderer.render(scene, camera);
 }
 
-function aumentarCorda(a) {
-    // a = tamanho que vai ser aumentado à corda
-
-    if (isPullingRod) {
-        bracos.rotation.z += 0.009;
-        bracos.position.x += 0.07;
-        if (bracos.rotation.z > 0.15) {
-            isPullingRod = false;
+function animacaoHomem() {
+    // Aminação do cabelo
+    if (isMovingLeft) {
+        // O cabelo esta-se mecher para a esquerda
+        // Verifica se já atingiu o ponto máximo de oscilação
+        cabelo.rotation.z -= 0.0009;
+        if (cabelo.rotation.z <= -0.03) {
+            isMovingLeft = false;
         }
     } else {
-        bracos.rotation.z -= 0.009;
-        bracos.position.x -= 0.07;
-        if (bracos.rotation.z <= -0.05) {
-            isPullingRod = true;
+        cabelo.rotation.z += 0.0009;
+        if (cabelo.rotation.z >= 0.03) {
+            isMovingLeft = true;
         }
     }
 
-    if ((keys["ArrowUp"] && initVal > 30) || (keys["ArrowDown"] && initVal < 100)) {
-        initVal += a;
-        cana.lastPos = cana.corda.position.y - (a / 2);
+    // Aminação da barba
+    if (isBeardMoving) {
+        // O cabelo esta-se mecher para a esquerda
+        // Verifica se já atingiu o ponto máximo de oscilação
+        barba.rotation.x -= 0.0002;
+        if (barba.rotation.x <= -0.03) {
+            isBeardMoving = false;
+        }
+    } else {
+        barba.rotation.x += 0.0002;
+        if (barba.rotation.x >= 0.03) {
+            isBeardMoving = true;
+        }
     }
-
-    homem.remove(cana.corda);
-    cana.geoCorda = new THREE.CylinderGeometry(.05, .05, initVal, 32);
-    cana.corda = new THREE.Mesh(cana.geoCorda, cana.matCorda);
-    cana.corda.position.x = 35;
-    cana.isco.position.y = -(initVal - 25)
-    cana.corda.position.y = cana.lastPos;
-    homem.add(cana.corda);
-    
-
 }
 
-function areObjectsColliding(x1, y1, x2, y2, r1, r2) {
-    // PDF 07_OBJECTS_COLLISIONS, pág. 20/29
-    return (Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)) < r1 + r2) ? true : false;
+function mapearControlos() {
+    // Lidar com os controlos
+    if (keys["ArrowUp"]) {
+        aumentarCorda(-1)
+    }
+
+    if (keys["ArrowDown"]) {
+        aumentarCorda(1)
+    }
+
+    if (keys["a"]) {
+        if (barco.position.x > -(window.innerWidth * .04)) {
+            if (acel > -0.3) {
+                acel -= 0.002;
+            }
+            isco.posx += acel;
+            barco.position.x += acel;
+        }
+        motor.rotation.x += 0.2;
+    }
+
+    if (keys["d"]) {
+        if (barco.position.x < (window.innerWidth * .04)) {
+            if (acel < 0.3) {
+                acel += 0.002;
+            }
+            isco.posx += acel;
+            barco.position.x += acel;
+        }
+        motor.rotation.x -= 0.2;
+    }
+
+    if((!keys["a"]) && (parseFloat(acel).toFixed(2) != 0.00) && (!keys["d"])) {
+        acel = acel < 0 ? acel += 0.002 : acel -= 0.002;
+        barco.position.x += acel;
+        isco.posx += acel;
+    }
 }
 
 window.addEventListener("resize", function() {
